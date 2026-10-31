@@ -1,7 +1,10 @@
 import { Router } from 'express';
+import { auditWrites } from './middleware/audit-writes';
 import { adminOnly, authenticate, backOffice, customerOnly } from './middleware/auth';
 import { authRoutes } from './modules/auth/auth.routes';
 import { automationRoutes } from './modules/automation/automation.routes';
+import { activityRoutes } from './modules/activity/activity.routes';
+import { exportsRoutes } from './modules/exports/exports.routes';
 import { bankRoutes } from './modules/bank/bank.routes';
 import { billingRoutes } from './modules/billing/billing.routes';
 import { catalogRoutes } from './modules/catalog/catalog.routes';
@@ -32,11 +35,11 @@ export const apiRoutes = Router()
   .use('/portal', authenticate, customerOnly, portalRoutes)
   .use('/users', authenticate, adminOnly, usersRoutes)
   .use('/lookups', authenticate, backOffice, lookupsRoutes)
-  .use('/catalog', authenticate, backOffice, catalogRoutes)
-  .use('/plans', authenticate, backOffice, plansRoutes)
-  .use('/templates', authenticate, backOffice, templatesRoutes)
+  .use('/catalog', authenticate, backOffice, auditWrites('catalog'), catalogRoutes)
+  .use('/plans', authenticate, backOffice, auditWrites('plan'), plansRoutes)
+  .use('/templates', authenticate, backOffice, auditWrites('template'), templatesRoutes)
   .use('/discounts', authenticate, backOffice, discountsRoutes)
-  .use('/customers', authenticate, backOffice, customersRoutes)
+  .use('/customers', authenticate, backOffice, auditWrites('customer'), customersRoutes)
   .use('/subscriptions', authenticate, backOffice, subscriptionsRoutes)
   .use('/invoices', authenticate, backOffice, invoicesRoutes)
   .use('/payments', authenticate, backOffice, paymentsRoutes)
@@ -44,4 +47,6 @@ export const apiRoutes = Router()
   .use('/bank-imports', authenticate, backOffice, bankRoutes)
   .use('/automation', authenticate, backOffice, automationRoutes)
   .use('/outbox', authenticate, backOffice, outboxRoutes)
-  .use('/reports', authenticate, backOffice, reportsRoutes);
+  .use('/reports', authenticate, backOffice, reportsRoutes)
+  .use('/exports', authenticate, backOffice, exportsRoutes)
+  .use('/activity', authenticate, adminOnly, activityRoutes);

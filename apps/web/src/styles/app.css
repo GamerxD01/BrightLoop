@@ -485,3 +485,11 @@ fieldset.bare { border: 0; margin: 0; padding: 0; min-width: 0; }
 .line-edit .input { width: 11rem; min-height: 32px; }
 .line-edit__error { flex-basis: 100%; }
 @media (max-width: 75rem) { .stats--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--space-lg); } .stats--4 .stat:nth-child(3) { padding-left: 0; border-left: 0; } }
+
+/* ── Health row ────────────────────────────────────────────────────── */
+.stats--health { padding-top: var(--space-lg); border-top: var(--rule-hair) solid var(--color-rule); }
+.stats--health dd { font-size: var(--text-xl); }
+.linkish { all: unset; cursor: pointer; text-decoration: underline; text-decoration-color: var(--color-rule-2); text-underline-offset: 0.16em; }
+.linkish:hover { text-decoration-color: var(--color-accent-2); }
+.linkish:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.filter-note { margin-bottom: var(--space-sm); font-size: var(--text-sm); }

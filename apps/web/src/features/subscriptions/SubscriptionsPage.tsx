@@ -6,6 +6,7 @@ import { Button, ButtonLink } from '../../components/Button';
 import { CustomerPicker } from '../../components/CustomerPicker';
 import { SelectField, TextField } from '../../components/Field';
 import { Money } from '../../components/Money';
+import { ExportLink } from '../../components/ExportLink';
 import { PageHeader, Panel, Toolbar } from '../../components/Page';
 import { SearchInput } from '../../components/SearchInput';
 import { SubscriptionStatusTag } from '../../components/Status';
@@ -142,6 +143,7 @@ export function SubscriptionsPage() {
         title="Subscriptions"
         actions={
           <>
+            <ExportLink entity="subscriptions" filters={f} />
             <Button onClick={() => setTemplating((v) => !v)} aria-expanded={templating}>
               From a template
             </Button>

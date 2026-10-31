@@ -30,6 +30,7 @@ import { TemplateFormPage, TemplatesPage } from './features/templates/TemplatesP
 import { DiscountFormPage, DiscountsPage } from './features/discounts/DiscountsPages';
 import { UsersPage } from './features/users/UsersPage';
 import { CompanyPage } from './features/company/CompanyPage';
+import { ActivityPage } from './features/activity/ActivityPage';
 import { AutomationPage } from './features/automation/AutomationPage';
 import { BankImportPage, BankImportsPage } from './features/bank/BankPages';
 import { OutboxEmailPage, OutboxPage } from './features/outbox/OutboxPages';
@@ -161,6 +162,14 @@ export function App() {
           element={
             <RequireRole roles={['admin']}>
               <UsersPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="activity"
+          element={
+            <RequireRole roles={['admin']}>
+              <ActivityPage />
             </RequireRole>
           }
         />

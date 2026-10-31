@@ -40,6 +40,44 @@ export const reportsRepository = {
       [from, to, planId],
     ),
 
+  /**
+   * Health of the book over the range.
+   * Churn: of the subscriptions that were live at some point in the range,
+   * the share that ended in it. A quote dropped before it ever went live is
+   * not churn, so only subscriptions with an "active" event count.
+   * ARPU: monthly recurring revenue ÷ customers with an active subscription.
+   * Collection rate: money in ÷ money invoiced in the range.
+   * Days to pay: average gap between an invoice's date and the cash for it.
+   */
+  health: (db: Db, from: string, to: string, planId: number | null) =>
+    queryOne<{
+      liveInRange: number;
+      churned: number;
+      activeCustomers: number;
+      avgDaysToPay: number | null;
+    }>(
+      db,
+      `WITH life AS (
+         SELECT s.id,
+                min(e.created_at) FILTER (WHERE e.to_status = 'active')::date AS live_on,
+                min(e.created_at) FILTER (WHERE e.to_status = 'closed')::date AS closed_on
+         FROM subscriptions s JOIN subscription_events e ON e.subscription_id = s.id
+         WHERE ($3::bigint IS NULL OR s.plan_id = $3)
+         GROUP BY s.id),
+       exposed AS (
+         SELECT * FROM life
+         WHERE live_on IS NOT NULL AND live_on <= $2 AND (closed_on IS NULL OR closed_on >= $1))
+       SELECT
+         (SELECT count(*) FROM exposed) AS live_in_range,
+         (SELECT count(*) FROM exposed WHERE closed_on BETWEEN $1 AND $2) AS churned,
+         (SELECT count(DISTINCT s.customer_id) FROM subscriptions s
+           WHERE s.status = 'active' AND ($3::bigint IS NULL OR s.plan_id = $3)) AS active_customers,
+         (SELECT round(avg(pm.paid_on - i.invoice_date), 1) FROM payments pm JOIN invoices i ON i.id = pm.invoice_id
+           LEFT JOIN subscriptions s ON s.id = i.subscription_id
+           WHERE pm.method <> 'credit' AND pm.paid_on BETWEEN $1 AND $2 AND ($3::bigint IS NULL OR s.plan_id = $3)) AS avg_days_to_pay`,
+      [from, to, planId],
+    ),
+
   /** One grouped scan per table over the date range (index on invoice_date / paid_on), joined to the month series. */
   monthly: (db: Db, from: string, to: string, planId: number | null) =>
     query<{ month: string; invoiced: number; collected: number }>(

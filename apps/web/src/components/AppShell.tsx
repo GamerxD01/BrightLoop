@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { ErrorBoundary } from './ErrorBoundary';
 import { LABELS } from '@brightloop/shared';
 import { useAuth, useUser } from '../lib/auth';
 import { useRealtime, type LiveState } from '../lib/realtime';
@@ -51,6 +52,7 @@ const NAV: NavGroup[] = [
       { to: '/company', label: 'Company profile', adminOnly: true },
       { to: '/users', label: 'Team', adminOnly: true },
       { to: '/outbox', label: 'Emails sent' },
+      { to: '/activity', label: 'Activity log', adminOnly: true },
     ],
   },
 ];
@@ -131,7 +133,9 @@ export function AppShell() {
         <UserBlock live={live} />
       </aside>
       <main id="main" className="main" tabIndex={-1}>
-        <Outlet />
+        <ErrorBoundary resetKey={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );
@@ -139,6 +143,7 @@ export function AppShell() {
 
 /** The customer portal: a plain top bar, two destinations. */
 export function PortalShell() {
+  const location = useLocation();
   const live = useRealtime(true);
   return (
     <div className="portal">
@@ -160,7 +165,9 @@ export function PortalShell() {
         </div>
       </header>
       <main id="main" className="portal__main" tabIndex={-1}>
-        <Outlet />
+        <ErrorBoundary resetKey={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );

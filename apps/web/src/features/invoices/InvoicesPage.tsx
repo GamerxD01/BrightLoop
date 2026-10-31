@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { LABELS } from '@brightloop/shared';
 import { Money } from '../../components/Money';
+import { ExportLink } from '../../components/ExportLink';
 import { PageHeader, Toolbar } from '../../components/Page';
 import { SearchInput } from '../../components/SearchInput';
 import { InvoiceStatusTag } from '../../components/Status';
@@ -100,7 +101,7 @@ export function InvoicesPage() {
 
   return (
     <>
-      <PageHeader title="Invoices" />
+      <PageHeader title="Invoices" actions={<ExportLink entity="invoices" filters={f} />} />
       <Toolbar>
         <SearchInput label="Search invoice or customer" value={f.q} onChange={(q) => set({ q })} />
         <div className="tabs" role="group" aria-label="Status">

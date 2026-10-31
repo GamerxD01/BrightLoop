@@ -19,6 +19,9 @@ import { useLookups } from '../../lib/queries';
 import type { BillingStatus, ReportSummary } from '../../lib/types';
 import { useUrlState } from '../../lib/url-state';
 
+/** 0.0731 → "7.3%"; null when there is nothing to divide by. */
+const pct = (v: number | null) => (v === null ? 'Not set' : `${(v * 100).toFixed(1)}%`);
+
 const DEFAULTS = { from: '', to: '', planId: '' };
 
 /** Invoiced against collected, month by month. Collected is the series that argues. */
@@ -213,6 +216,43 @@ export function DashboardPage() {
               <dd className={`fig ${r.headline.overdueCount ? 'is-alert' : ''}`}>
                 {formatCompactMoney(r.headline.overdueAmount)}
                 <span className="stat__sub">{plural(r.headline.overdueCount, 'invoice')}</span>
+              </dd>
+            </div>
+          </dl>
+
+          <dl className="stats stats--health" aria-label="Health of the book in this range">
+            <div className="stat">
+              <dt>Churn in range</dt>
+              <dd className="fig">
+                {pct(r.health.churnRate)}
+                <span className="stat__sub">
+                  {r.health.churned} of {r.health.liveInRange} live ended
+                </span>
+              </dd>
+            </div>
+            <div className="stat">
+              <dt>Paying customers</dt>
+              <dd className="fig">{r.health.activeCustomers.toLocaleString('en-IN')}</dd>
+            </div>
+            <div className="stat">
+              <dt>Revenue per customer</dt>
+              <dd className="fig">
+                {formatCompactMoney(r.health.arpu)}
+                <span className="stat__sub">a month</span>
+              </dd>
+            </div>
+            <div className="stat">
+              <dt>Collection rate</dt>
+              <dd className="fig">
+                {pct(r.health.collectionRate)}
+                <span className="stat__sub">of invoiced</span>
+              </dd>
+            </div>
+            <div className="stat">
+              <dt>Days to get paid</dt>
+              <dd className="fig">
+                {r.health.avgDaysToPay === null ? 'Not set' : r.health.avgDaysToPay}
+                <span className="stat__sub">on average</span>
               </dd>
             </div>
           </dl>

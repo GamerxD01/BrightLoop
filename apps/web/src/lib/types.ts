@@ -311,6 +311,15 @@ export interface ReportSummary {
     overdueCount: number;
     overdueAmount: number;
   };
+  health: {
+    churnRate: number | null;
+    churned: number;
+    liveInRange: number;
+    activeCustomers: number;
+    arpu: number;
+    collectionRate: number | null;
+    avgDaysToPay: number | null;
+  };
   monthly: { month: string; invoiced: number; collected: number }[];
   byStatus: { status: SubscriptionStatus; count: number }[];
   byPlan: { planId: number; planName: string; active: number; mrr: number }[];

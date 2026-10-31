@@ -5,6 +5,7 @@ import { customerSchema, INDIAN_STATES, stateName } from '@brightloop/shared';
 import { Button, ButtonLink } from '../../components/Button';
 import { TextArea, TextField, SelectField } from '../../components/Field';
 import { Money } from '../../components/Money';
+import { ExportLink } from '../../components/ExportLink';
 import { Facts, PageHeader, Panel, Toolbar } from '../../components/Page';
 import { SearchInput } from '../../components/SearchInput';
 import { ErrorState, SkeletonBlock } from '../../components/States';
@@ -64,9 +65,12 @@ export function CustomersPage() {
       <PageHeader
         title="Customers"
         actions={
-          <ButtonLink to="/customers/new" variant="primary">
-            New customer
-          </ButtonLink>
+          <>
+            <ExportLink entity="customers" filters={f} />
+            <ButtonLink to="/customers/new" variant="primary">
+              New customer
+            </ButtonLink>
+          </>
         }
       />
       <Toolbar>

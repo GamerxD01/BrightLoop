@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ALL_PAYMENT_METHODS, LABELS } from '@brightloop/shared';
 import { Money } from '../../components/Money';
+import { ExportLink } from '../../components/ExportLink';
 import { PageHeader, Toolbar } from '../../components/Page';
 import { SearchInput } from '../../components/SearchInput';
 import { DataTable, EmptyState, Pagination, type Column } from '../../components/Table';
@@ -50,7 +51,7 @@ export function PaymentsPage() {
   });
   return (
     <>
-      <PageHeader title="Payments" />
+      <PageHeader title="Payments" actions={<ExportLink entity="payments" filters={f} />} />
       <Toolbar>
         <SearchInput label="Search invoice or customer" value={f.q} onChange={(q) => set({ q })} />
         <select
