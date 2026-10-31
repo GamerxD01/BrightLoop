@@ -29,6 +29,7 @@ A narrated tour of every function for all three roles (admin, staff and customer
 |---|---|
 | Admin | dashboard, products and variants, plans, quotation templates, discounts, a new subscription with live pricing, the lifecycle, the billing run, the GST invoice, bank statement matching, payments, automation, company profile, team and activity log |
 | Staff | what staff can and cannot do, enforced by the server, and live updates |
+| Customer, part 2 | browsing plans and subscribing from the portal, and staff seeing it at once: [docs/brightloop-plans.mp4](docs/brightloop-plans.mp4) |
 | Customer | the portal, accepting quotations, changing seats mid-period with part-period pricing, invoices and PDFs |
 
 ## Highlights
