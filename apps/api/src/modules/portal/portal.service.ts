@@ -1,4 +1,8 @@
 import { todayIso } from '@brightloop/shared';
+import type { PortalSubscribeInput, SubscriptionInput } from '@brightloop/shared';
+import { pool, queryOne } from '../../db/pool';
+import { plansRepository } from '../plans/plans.repository';
+import { RuleError } from '../../lib/errors';
 import type {
   InvoiceListQuery,
   SubscriptionAction,
@@ -52,6 +56,65 @@ export const portalService = {
       'Requested by customer in the portal',
       actor,
     );
+  },
+
+  /** Plans a customer can buy today. */
+  async listPlans() {
+    const today = todayIso();
+    const rows = await plansRepository.list(pool, { page: 1, pageSize: 100, dir: 'asc' });
+    return rows
+      .filter((p) => p.isActive && p.startDate <= today && (!p.endDate || p.endDate >= today))
+      .map(({ activeSubscriptions: _n, ...p }) => p);
+  },
+
+  /** The back-office input a portal order stands for: always the customer's own, no discounts. */
+  async toInput(input: PortalSubscribeInput, actor: Actor): Promise<SubscriptionInput> {
+    if (input.startDate < todayIso()) throw new RuleError('The start date cannot be in the past');
+    const term = await queryOne<{ id: number }>(
+      pool,
+      'SELECT id FROM payment_terms ORDER BY due_days, id LIMIT 1',
+    );
+    if (!term) throw new RuleError('No payment terms are set up yet');
+    return {
+      customerId: actor.customerId!,
+      planId: input.planId,
+      templateId: null,
+      planQuantity: input.planQuantity,
+      startDate: input.startDate,
+      expiryDate: null,
+      paymentTermId: term.id,
+      notes: null,
+      lines: input.lines.map((l) => ({ ...l, unitPrice: null })),
+      discountIds: [],
+    };
+  },
+
+  async previewOrder(input: PortalSubscribeInput, actor: Actor) {
+    return subscriptionsService.preview(await this.toInput(input, actor));
+  },
+
+  /**
+   * Subscribing in the portal is the customer accepting their own quote:
+   * the subscription goes through Draft, Quotation and Confirmed on its
+   * timeline, and starts at once when the start date is today.
+   */
+  async subscribe(input: PortalSubscribeInput, actor: Actor) {
+    const created = await subscriptionsService.create(await this.toInput(input, actor), actor);
+    await subscriptionsService.transition(
+      created.id,
+      'send_quotation',
+      'Ordered by the customer in the portal',
+      actor,
+    );
+    await subscriptionsService.transition(
+      created.id,
+      'confirm',
+      'Confirmed by the customer',
+      actor,
+    );
+    if (input.startDate <= todayIso())
+      await subscriptionsService.transition(created.id, 'activate', 'Started on order', actor);
+    return this.getSubscription(created.id, actor);
   },
 
   listInvoices(q: InvoiceListQuery, actor: Actor) {

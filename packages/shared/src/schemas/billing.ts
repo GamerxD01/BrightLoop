@@ -107,6 +107,24 @@ export const subscriptionSchema = z
   });
 export type SubscriptionInput = z.infer<typeof subscriptionSchema>;
 
+/** A customer subscribing from the portal: a plan, seats, add-ons and a start date. */
+export const portalSubscribeSchema = z.object({
+  planId: idSchema,
+  planQuantity: z.number().int().min(1, 'At least 1').max(100_000),
+  startDate: isoDateSchema,
+  lines: z
+    .array(
+      z.object({
+        productId: idSchema,
+        variantId: idSchema.nullable().default(null),
+        quantity: z.number().int().min(1, 'At least 1').max(100_000),
+      }),
+    )
+    .max(20)
+    .default([]),
+});
+export type PortalSubscribeInput = z.infer<typeof portalSubscribeSchema>;
+
 export const fromTemplateSchema = z.object({
   templateId: idSchema,
   customerId: idSchema,

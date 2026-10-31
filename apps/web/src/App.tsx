@@ -40,6 +40,7 @@ import {
   PortalInvoicesPage,
   PortalSubscriptionPage,
 } from './features/portal/PortalPages';
+import { PortalPlansPage } from './features/portal/PortalPlansPage';
 
 /** Sends people to sign in, or to the side of the app their role belongs to. */
 function RequireRole({ roles, children }: { roles: Role[]; children: ReactNode }) {
@@ -106,6 +107,7 @@ export function App() {
         }
       >
         <Route index element={<PortalHomePage />} />
+        <Route path="plans" element={<PortalPlansPage />} />
         <Route path="subscriptions/:id" element={<PortalSubscriptionPage />} />
         <Route path="invoices" element={<PortalInvoicesPage />} />
         <Route path="invoices/:id" element={<InvoiceDetailPage portal />} />

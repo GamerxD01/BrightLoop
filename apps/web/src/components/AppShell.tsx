@@ -157,6 +157,9 @@ export function PortalShell() {
             <NavLink to="/portal" end className="navlink">
               My subscriptions
             </NavLink>
+            <NavLink to="/portal/plans" className="navlink">
+              Plans
+            </NavLink>
             <NavLink to="/portal/invoices" className="navlink">
               Invoices
             </NavLink>

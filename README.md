@@ -11,7 +11,7 @@ Products and variants, plans, quotations, subscriptions with a guarded lifecycle
 ![React](https://img.shields.io/badge/React-18-149eca?logo=react&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-222?logo=express&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-74%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-78%20passing-2ea44f)
 
 [▶ Watch the 6-minute walkthrough](docs/brightloop-walkthrough.mp4) · [Run it](#run-it) · [Demo script](docs/DEMO.md) · [Architecture](#architecture) · [Database](#database)
 
@@ -86,6 +86,7 @@ A step-by-step walkthrough for judging is in [docs/DEMO.md](docs/DEMO.md).
 | Products, variants, plans, taxes, discount rules | ✓ | view only | |
 | Company profile, team, activity log | ✓ | | |
 | Own subscriptions and invoices, accept quotations, change seats | | | ✓ |
+| Browse plans and subscribe from the portal | | | ✓ |
 
 Who may call what is declared once per route mount on the server; the menu only mirrors it. Another customer's record answers 404, not 403.
 
@@ -151,6 +152,7 @@ The same transition table lives in `packages/shared` and drives both the buttons
 ## Beyond the brief
 
 - **GST tax invoices**: seller and buyer GSTIN, HSN/SAC per line, place of supply, CGST + SGST within the state and IGST across states, the total in words, and a **UPI QR code** to pay from. Seller details are snapshotted on each invoice, so a later profile edit never rewrites an issued one.
+- **Customers subscribe themselves**: the portal's *Plans* page lists the plans on sale today; the customer picks seats, add-ons and a start date, sees the first invoice priced by the server, and subscribes. It appears on staff screens at once, with the whole path (Draft, Quotation, Confirmed, Active) on its timeline, and bills like any other subscription.
 - **Customer self-service**: change seats and switch add-ons on or off mid-period. Additions are charged for the days left on an adjustment invoice; removals become account credit, spent automatically on the next invoice.
 - **Renewal radar**: subscriptions ending in 30 days, with notices to the customer at 30 and 7 days.
 - **Company profile and brand**: logo upload, legal name, address, GSTIN (with its check digit validated), bank and UPI details, used on every invoice and email. Fonts are bundled, so the app looks the same offline.
@@ -262,7 +264,7 @@ Lists are paged and filtered in SQL; dashboard figures are single aggregate quer
 
 ```bash
 npm test          # 30 unit tests: pricing, part-period charges, workflow, GST, money, dates, bank parsing
-                  # + 44 API tests against a real PostgreSQL
+                  # + 48 API tests against a real PostgreSQL
 npm run lint
 npm run typecheck
 ```

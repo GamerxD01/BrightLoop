@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import {
   invoiceListQuerySchema,
+  portalSubscribeSchema,
   subscriptionActionSchema,
   subscriptionListQuerySchema,
 } from '@brightloop/shared';
@@ -35,6 +36,19 @@ export const portalRoutes = Router()
         variants: p.variants,
       })),
     });
+  })
+  .get('/plans', async (_req: Request, res: Response) => {
+    res.json({ data: await s.listPlans() });
+  })
+  .post(
+    '/subscribe/preview',
+    validate(portalSubscribeSchema),
+    async (req: Request, res: Response) => {
+      res.json({ data: await s.previewOrder(req.body, actorOf(req)) });
+    },
+  )
+  .post('/subscribe', validate(portalSubscribeSchema), async (req: Request, res: Response) => {
+    res.status(201).json({ data: await s.subscribe(req.body, actorOf(req)) });
   })
   .get(
     '/subscriptions',
