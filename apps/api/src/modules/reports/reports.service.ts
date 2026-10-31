@@ -11,13 +11,25 @@ export const reportsService = {
     if (from > to) throw new ValidationError({ from: 'Start must be before end' });
     const planId = q.planId ?? null;
 
-    const [headline, monthly, byStatus, byPlan, topOverdue] = await Promise.all([
-      repo.headline(pool, from, to, planId),
-      repo.monthly(pool, from, to, planId),
-      repo.byStatus(pool, planId),
-      repo.byPlan(pool),
-      repo.topOverdue(pool, planId),
-    ]);
-    return { range: { from, to, planId }, headline, monthly, byStatus, byPlan, topOverdue };
+    const [headline, monthly, byStatus, byPlan, topOverdue, renewalsDue, automation] =
+      await Promise.all([
+        repo.headline(pool, from, to, planId),
+        repo.monthly(pool, from, to, planId),
+        repo.byStatus(pool, planId),
+        repo.byPlan(pool),
+        repo.topOverdue(pool, planId),
+        repo.renewalsDue(pool, planId),
+        repo.lastAutomation(pool),
+      ]);
+    return {
+      range: { from, to, planId },
+      headline,
+      monthly,
+      byStatus,
+      byPlan,
+      topOverdue,
+      renewalsDue,
+      automation,
+    };
   },
 };

@@ -41,7 +41,12 @@ async function seed() {
   if (process.argv.includes('--reset')) await reset();
   await migrate();
 
-  if (await queryOne(pool, 'SELECT 1 FROM users LIMIT 1')) {
+  if (
+    await queryOne(
+      pool,
+      `SELECT 1 FROM users WHERE email <> 'automation@brightloop.internal' LIMIT 1`,
+    )
+  ) {
     logger.warn('Database already has users; run with --reset to start over');
     return;
   }
@@ -518,6 +523,21 @@ async function seed() {
     ['send_quotation', 'confirm'],
     { paymentTermId: net30.id },
   );
+  // Two contracts ending soon, for the renewal radar and its notices.
+  await make(
+    10,
+    growth.id,
+    3,
+    addMonths(todayIso(), -5),
+    [{ productId: support.id, quantity: 1 }],
+    live,
+    {
+      expiryDate: addDays(todayIso(), 21),
+    },
+  );
+  await make(4, starter.id, 2, addMonths(todayIso(), -3), [], live, {
+    expiryDate: addDays(todayIso(), 5),
+  });
   await subscriptionsService.createFromTemplate(
     { templateId: enterprise.id, customerId: customers[1]!.id, startDate: addDays(todayIso(), 14) },
     actor,

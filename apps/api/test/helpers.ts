@@ -13,7 +13,12 @@ let ready: Promise<void> | null = null;
 export function bootstrap() {
   ready ??= (async () => {
     await migrate();
-    if (!(await queryOne(pool, 'SELECT 1 FROM users LIMIT 1'))) {
+    if (
+      !(await queryOne(
+        pool,
+        `SELECT 1 FROM users WHERE email <> 'automation@brightloop.internal' LIMIT 1`,
+      ))
+    ) {
       const hash = await hashPassword(PASSWORD);
       await query(
         pool,

@@ -121,6 +121,8 @@ export const subscriptionListQuerySchema = listQuerySchema.extend({
   status: z.enum(SUBSCRIPTION_STATUSES).optional(),
   planId: idSchema.optional(),
   customerId: idSchema.optional(),
+  /** Active subscriptions ending within this many days (the renewal radar). */
+  expiringWithin: z.coerce.number().int().min(1).max(365).optional(),
 });
 export type SubscriptionListQuery = z.infer<typeof subscriptionListQuerySchema>;
 

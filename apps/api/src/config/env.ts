@@ -21,6 +21,11 @@ const envSchema = z.object({
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
+  AUTOMATION_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  AUTOMATION_INTERVAL_MINUTES: z.coerce.number().int().min(1).max(1440).default(10),
   MAIL_FROM: z.string().default('Brightloop Billing <billing@brightloop.test>'),
 });
 

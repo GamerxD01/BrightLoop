@@ -95,7 +95,7 @@ export const billingService = {
   async run(
     options: { asOf?: string; autoConfirm: boolean },
     actor: Actor,
-  ): Promise<BillingRunResult> {
+  ): Promise<BillingRunResult & { invoiceIds: number[] }> {
     if (running) throw new RuleError('A billing run is already in progress');
     const asOf = options.asOf ?? todayIso();
     if (asOf > todayIso()) throw new RuleError('Cannot bill a future date');
@@ -156,7 +156,7 @@ export const billingService = {
         data: { processed: billed, total, invoices: invoiceIds.length, done: true },
       });
       events.publish({ type: 'invoice.changed', data: { bulk: true } });
-      return result;
+      return { ...result, invoiceIds };
     } finally {
       running = null;
     }

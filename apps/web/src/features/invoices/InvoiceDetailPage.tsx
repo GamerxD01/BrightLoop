@@ -23,6 +23,22 @@ import { formatDate, formatDateTime } from '../../lib/format';
 import { paiseToRupeesInput, rupeesToPaise, useFormSubmit } from '../../lib/forms';
 import type { Invoice } from '../../lib/types';
 
+interface Reminder {
+  id: number;
+  stage: number;
+  emailId: number | null;
+  sentBy: string | null;
+  createdAt: string;
+}
+
+/** Stage 0 is one sent by hand; 1 to 3 go out automatically at 3, 7 and 14 days late. */
+const STAGE_LABEL: Record<number, string> = {
+  0: 'Reminder sent by hand',
+  1: 'Polite reminder, 3 days late',
+  2: 'Firm reminder, 7 days late',
+  3: 'Final reminder, 14 days late',
+};
+
 function RecordPayment({ invoice }: { invoice: Invoice }) {
   const qc = useQueryClient();
   const [f, setF] = useState({
@@ -131,6 +147,21 @@ export function InvoiceDetailPage({ portal = false }: { portal?: boolean }) {
       toast.show(err instanceof ApiError ? err.message : 'That did not work', 'error'),
   });
 
+  const reminders = useQuery({
+    queryKey: ['invoice', id, 'reminders'],
+    queryFn: () => api.get<Reminder[]>(`/invoices/${id}/reminders`),
+    enabled: !portal,
+  });
+  const remind = useMutation({
+    mutationFn: () => api.post(`/invoices/${id}/remind`),
+    onSuccess: () => {
+      toast.show('Reminder sent');
+      void qc.invalidateQueries({ queryKey: ['outbox'] });
+      void qc.invalidateQueries({ queryKey: ['invoice', id, 'reminders'] });
+    },
+    onError: (err) => toast.show(err instanceof ApiError ? err.message : 'Could not send', 'error'),
+  });
+
   if (invoice.isError)
     return <ErrorState error={invoice.error} onRetry={() => void invoice.refetch()} />;
   if (!invoice.data) return <SkeletonBlock lines={10} />;
@@ -157,6 +188,11 @@ export function InvoiceDetailPage({ portal = false }: { portal?: boolean }) {
             {can('cancel') && (
               <Button variant="danger" onClick={() => setCancelling(true)}>
                 Cancel invoice
+              </Button>
+            )}
+            {!portal && inv.status === 'confirmed' && (
+              <Button onClick={() => remind.mutate()} pending={remind.isPending}>
+                Send reminder
               </Button>
             )}
             {can('send') && (
@@ -238,6 +274,28 @@ export function InvoiceDetailPage({ portal = false }: { portal?: boolean }) {
                   ['Sent', inv.sentAt ? formatDateTime(inv.sentAt) : 'Not yet'],
                 ]}
               />
+            </Panel>
+          )}
+          {!portal && (inv.status === 'confirmed' || (reminders.data?.length ?? 0) > 0) && (
+            <Panel title="Reminders">
+              {!reminders.data ? null : reminders.data.length === 0 ? (
+                <p className="muted">
+                  {inv.isOverdue
+                    ? 'None yet. The first goes out automatically at 3 days late.'
+                    : 'Reminders start automatically 3 days after the due date.'}
+                </p>
+              ) : (
+                <ol className="timeline">
+                  {reminders.data.map((r) => (
+                    <li key={r.id} className="timeline__item">
+                      <p className="timeline__what">{STAGE_LABEL[r.stage] ?? 'Reminder'}</p>
+                      <p className="timeline__meta">
+                        {formatDateTime(r.createdAt)}, {r.sentBy ?? 'Automation'}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </Panel>
           )}
           {!portal && (

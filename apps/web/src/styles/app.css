@@ -446,3 +446,12 @@ fieldset.bare { border: 0; margin: 0; padding: 0; min-width: 0; }
   .desk--pad { padding: 0; }
   .sheet { max-width: none; padding: 0; }
 }
+
+/* ── Automation ────────────────────────────────────────────────────── */
+.jobs { list-style: none; margin: 0; padding: 0; display: grid; }
+.job { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-lg); padding-block: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); }
+.job:first-child { border-top: 0; padding-top: 0; }
+.job__text { display: grid; gap: var(--space-2xs); min-width: 0; }
+.job__text h3 { font-size: var(--text-md); }
+.job__last { font-size: var(--text-sm); }
+.callout__text { display: grid; gap: var(--space-2xs); }

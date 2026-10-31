@@ -143,4 +143,131 @@ export const notifications = {
         action: { label: 'View invoice', url: `${env.APP_URL}/portal/invoices/${inv.id}` },
       },
     ),
+
+  /** Overdue reminders get firmer: 1 polite, 2 firm, 3 final. 0 is one sent by hand. */
+  reminder(inv: InvoiceDetail, stage: 0 | 1 | 2 | 3, daysLate: number) {
+    const tone = {
+      0: {
+        subject: `Reminder: invoice ${inv.number} is due`,
+        heading: 'A quick reminder',
+        line: `Invoice ${inv.number} for ${formatMoney(inv.amountDue)} was due on ${date(inv.dueDate)}.`,
+      },
+      1: {
+        subject: `Invoice ${inv.number} is ${daysLate} days overdue`,
+        heading: 'Just a friendly reminder',
+        line: `We have not yet received payment for invoice ${inv.number}. It was due on ${date(inv.dueDate)}; if it is already on its way, thank you and please ignore this.`,
+      },
+      2: {
+        subject: `Second reminder: invoice ${inv.number} is overdue`,
+        heading: 'Your invoice is overdue',
+        line: `Invoice ${inv.number} is now ${daysLate} days past its due date. Please arrange payment this week so your service continues without interruption.`,
+      },
+      3: {
+        subject: `Final reminder: invoice ${inv.number}`,
+        heading: 'Final reminder before we pause service',
+        line: `Invoice ${inv.number} is ${daysLate} days overdue. If we do not receive payment soon, we may need to pause your subscription. Reply to this email if something is holding it up.`,
+      },
+    }[stage];
+    return deliver(
+      {
+        kind: 'reminder',
+        to: inv.customerEmail,
+        subject: tone.subject,
+        entity: 'invoice',
+        entityId: inv.id,
+        customerId: inv.customerId,
+      },
+      {
+        preheader: `${formatMoney(inv.amountDue)} outstanding on ${inv.number}.`,
+        heading: tone.heading,
+        paragraphs: [`Hello ${inv.customerName},`, tone.line],
+        rows: [
+          ['Invoice', inv.number],
+          ['Due date', date(inv.dueDate)],
+          ['Outstanding', formatMoney(inv.amountDue)],
+        ],
+        action: { label: 'View and pay', url: `${env.APP_URL}/portal/invoices/${inv.id}` },
+        note: 'You can pay by UPI using the QR code on the invoice, or by bank transfer quoting the invoice number.',
+      },
+    );
+  },
+
+  renewal(
+    sub: {
+      id: number;
+      number: string;
+      customerId: number;
+      customerName: string;
+      customerEmail: string;
+      planName: string;
+      expiryDate: string;
+      renewable: boolean;
+    },
+    daysLeft: number,
+  ) {
+    return deliver(
+      {
+        kind: 'renewal',
+        to: sub.customerEmail,
+        subject: `Your ${sub.planName} subscription ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`,
+        entity: 'subscription',
+        entityId: sub.id,
+        customerId: sub.customerId,
+      },
+      {
+        preheader: `${sub.number} ends on ${date(sub.expiryDate)}.`,
+        heading: 'Time to renew',
+        paragraphs: [
+          `Hello ${sub.customerName}, your subscription ${sub.number} on ${sub.planName} ends on ${date(sub.expiryDate)}.`,
+          sub.renewable
+            ? 'You can renew it from your portal in one click, and nothing changes in how you use it.'
+            : 'This plan does not renew automatically. Reply to this email and we will set up what comes next.',
+        ],
+        action: sub.renewable
+          ? { label: 'Renew now', url: `${env.APP_URL}/portal/subscriptions/${sub.id}` }
+          : undefined,
+      },
+    );
+  },
+
+  quotation(sub: {
+    id: number;
+    number: string;
+    customerId: number;
+    customerName: string;
+    customerEmail: string;
+    planName: string;
+    amountTotal: number;
+    quoteValidUntil: string | null;
+  }) {
+    return deliver(
+      {
+        kind: 'quote',
+        to: sub.customerEmail,
+        subject: `Your quotation ${sub.number}`,
+        entity: 'subscription',
+        entityId: sub.id,
+        customerId: sub.customerId,
+      },
+      {
+        preheader: `${sub.planName}, ${formatMoney(sub.amountTotal)} each period.`,
+        heading: 'Your quotation is ready',
+        paragraphs: [
+          `Hello ${sub.customerName}, here is the quotation we prepared for you on ${sub.planName}.`,
+          'Review the lines in your portal and accept it there; we will take it from there.',
+        ],
+        rows: [
+          ['Quotation', sub.number],
+          ['Each period', `${formatMoney(sub.amountTotal)} incl. tax`],
+          ...(sub.quoteValidUntil
+            ? ([['Valid until', date(sub.quoteValidUntil)]] as [string, string][])
+            : []),
+        ],
+        action: {
+          label: 'Review and accept',
+          url: `${env.APP_URL}/portal/subscriptions/${sub.id}`,
+        },
+      },
+    );
+  },
 };

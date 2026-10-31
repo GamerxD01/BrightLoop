@@ -112,6 +112,12 @@ export const subscriptionsRepository = {
       .add('s.plan_id = ?', q.planId)
       .add('s.customer_id = ?', q.customerId);
     if (q.q) f.add(`(s.number ILIKE ? OR c.name ILIKE $${f.params.length + 1})`, `%${q.q}%`);
+    if (q.expiringWithin) {
+      f.raw(`s.status = 'active'`).add(
+        `s.expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + ?::int`,
+        q.expiringWithin,
+      );
+    }
     const order = orderBy(
       q.sort,
       q.dir,

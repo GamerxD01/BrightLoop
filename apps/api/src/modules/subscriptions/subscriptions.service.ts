@@ -24,6 +24,8 @@ import { customersService } from '../customers/customers.service';
 import { discountsRepository } from '../discounts/discounts.repository';
 import { plansService } from '../plans/plans.service';
 import type { Plan } from '../plans/plans.repository';
+import { logger } from '../../lib/logger';
+import { notifications } from '../notifications/notifications.service';
 import { templatesService } from '../templates/templates.service';
 import {
   subscriptionsRepository as repo,
@@ -332,6 +334,12 @@ export const subscriptionsService = {
     });
 
     publishChange(id, result.customerId, result.status);
+    if (action === 'send_quotation') {
+      // The customer gets the quote by email; a mail problem never blocks the sale.
+      void this.get(id)
+        .then((sub) => notifications.quotation(sub))
+        .catch((err) => logger.error({ err, subscriptionId: id }, 'Quotation email failed'));
+    }
     return this.get(id);
   },
 

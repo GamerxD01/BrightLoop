@@ -5,8 +5,10 @@ import { billingService as s } from './billing.service';
 export const billingController = {
   status: async (_req: Request, res: Response) =>
     void res.json({ data: { ...s.status(), due: await s.dueSummary() } }),
-  run: async (req: Request, res: Response) =>
-    void res.json({ data: await s.run(req.body, actorOf(req)) }),
+  async run(req: Request, res: Response) {
+    const { invoiceIds: _ids, ...result } = await s.run(req.body, actorOf(req));
+    res.json({ data: result });
+  },
   billOne: async (req: Request, res: Response) =>
     void res.status(201).json({ data: await s.billOne(idParam(req), actorOf(req)) }),
 };

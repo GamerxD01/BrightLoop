@@ -22,7 +22,7 @@ const INVALIDATES: Record<EventType, string[]> = {
     'portal',
   ],
   'payment.recorded': ['payments', 'invoices', 'invoice', 'dashboard', 'customers', 'portal'],
-  'billing.progress': [],
+  'billing.progress': ['automation'],
   'catalog.changed': ['lookups', 'products', 'plans', 'taxes', 'attributes'],
 };
 

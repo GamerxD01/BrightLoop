@@ -6,7 +6,15 @@ import { Money } from '../../components/Money';
 import { PageHeader, Panel } from '../../components/Page';
 import { EmptyState, ErrorState, SkeletonBlock } from '../../components/States';
 import { api } from '../../lib/api';
-import { formatCompactMoney, formatDate, formatMonth, formatMoney, plural } from '../../lib/format';
+import { summarise } from '../automation/AutomationPage';
+import {
+  formatCompactMoney,
+  formatDate,
+  formatDateTime,
+  formatMonth,
+  formatMoney,
+  plural,
+} from '../../lib/format';
 import { useLookups } from '../../lib/queries';
 import type { BillingStatus, ReportSummary } from '../../lib/types';
 import { useUrlState } from '../../lib/url-state';
@@ -64,27 +72,41 @@ function MonthlyChart({ data }: { data: ReportSummary['monthly'] }) {
   );
 }
 
-function BillingDue() {
+/** Today's billing, said plainly: what ran by itself and what is still due. */
+function BillingDue({ automation }: { automation?: ReportSummary['automation'] }) {
   const status = useQuery({
     queryKey: ['billing'],
     queryFn: () => api.get<BillingStatus>('/billing'),
   });
   if (!status.data) return null;
   const { due } = status.data;
+  const billing = automation?.find((a) => a.job === 'billing');
   return (
     <div className="callout">
-      <p>
-        {due.subscriptions > 0 ? (
-          <>
-            <strong>{plural(due.subscriptions, 'subscription')}</strong> due for billing today,
-            worth <span className="fig">{formatMoney(due.amount)}</span> a period.
-          </>
-        ) : (
-          'Nothing is due for billing today.'
+      <div className="callout__text">
+        <p>
+          {due.subscriptions > 0 ? (
+            <>
+              <strong>{plural(due.subscriptions, 'subscription')}</strong> due for billing today,
+              worth <span className="fig">{formatMoney(due.amount)}</span> a period.
+            </>
+          ) : (
+            'Every active subscription is billed up to date.'
+          )}
+        </p>
+        {billing?.finishedAt && (
+          <p className="muted">
+            Billing ran {billing.trigger === 'schedule' ? 'automatically' : 'by hand'} at{' '}
+            {formatDateTime(billing.finishedAt)}
+            {billing.result ? `: ${summarise(billing.result) || 'nothing to bill'}` : ''}.
+          </p>
         )}
-      </p>
-      <ButtonLink to="/billing" variant={due.subscriptions > 0 ? 'primary' : 'secondary'}>
-        {due.subscriptions > 0 ? 'Run billing' : 'Open billing'}
+      </div>
+      <ButtonLink
+        to={due.subscriptions > 0 ? '/billing' : '/automation'}
+        variant={due.subscriptions > 0 ? 'primary' : 'secondary'}
+      >
+        {due.subscriptions > 0 ? 'Run billing now' : 'See automation'}
       </ButtonLink>
     </div>
   );
@@ -160,7 +182,7 @@ export function DashboardPage() {
         )}
       </form>
 
-      <BillingDue />
+      <BillingDue automation={r?.automation} />
 
       {report.isError && <ErrorState error={report.error} onRetry={() => void report.refetch()} />}
       {!r && !report.isError && <SkeletonBlock lines={6} />}
@@ -241,6 +263,57 @@ export function DashboardPage() {
                         <td className="num fig">{i.daysOverdue}</td>
                         <td className="num">
                           <Money value={i.amountDue} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Panel>
+
+            <Panel
+              title="Renewals in the next 30 days"
+              actions={<Link to="/subscriptions?expiringWithin=30">All ending soon</Link>}
+            >
+              {r.renewalsDue.length === 0 ? (
+                <EmptyState title="Nothing ending soon">
+                  No active subscription ends in the next 30 days.
+                </EmptyState>
+              ) : (
+                <table className="table table--compact">
+                  <caption className="visually-hidden">
+                    Subscriptions ending in the next 30 days
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Subscription</th>
+                      <th scope="col">Customer</th>
+                      <th scope="col" className="num">
+                        Days left
+                      </th>
+                      <th scope="col">Next step</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {r.renewalsDue.map((x) => (
+                      <tr key={x.id}>
+                        <td>
+                          <Link to={`/subscriptions/${x.id}`} className="fig">
+                            {x.number}
+                          </Link>
+                        </td>
+                        <td>{x.customerName}</td>
+                        <td className={`num fig ${x.daysLeft <= 7 ? 'is-alert' : ''}`}>
+                          {x.daysLeft}
+                        </td>
+                        <td>
+                          {x.renewalId ? (
+                            <Link to={`/subscriptions/${x.renewalId}`}>Renewal quoted</Link>
+                          ) : x.noticeSent ? (
+                            'Customer notified'
+                          ) : (
+                            <span className="muted">Notice goes out today</span>
+                          )}
                         </td>
                       </tr>
                     ))}

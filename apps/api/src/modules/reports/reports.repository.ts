@@ -63,6 +63,42 @@ export const reportsRepository = {
       [from, to, planId],
     ),
 
+  /** Active subscriptions ending in the next 30 days, soonest first, with whether a renewal exists. */
+  renewalsDue: (db: Db, planId: number | null) =>
+    query<{
+      id: number;
+      number: string;
+      customerName: string;
+      planName: string;
+      expiryDate: string;
+      daysLeft: number;
+      renewalId: number | null;
+      noticeSent: boolean;
+    }>(
+      db,
+      `SELECT s.id, s.number, c.name AS customer_name, p.name AS plan_name, s.expiry_date,
+              s.expiry_date - CURRENT_DATE AS days_left,
+              (SELECT r.id FROM subscriptions r WHERE r.renewed_from_id = s.id AND r.status <> 'closed' LIMIT 1) AS renewal_id,
+              EXISTS (SELECT 1 FROM subscription_notices n WHERE n.subscription_id = s.id) AS notice_sent
+       FROM subscriptions s JOIN customers c ON c.id = s.customer_id JOIN plans p ON p.id = s.plan_id
+       WHERE s.status = 'active' AND s.expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 30
+         AND ($1::bigint IS NULL OR s.plan_id = $1)
+       ORDER BY s.expiry_date, s.id LIMIT 8`,
+      [planId],
+    ),
+
+  lastAutomation: (db: Db) =>
+    query<{
+      job: string;
+      status: string;
+      result: Record<string, unknown> | null;
+      finishedAt: string | null;
+      trigger: string;
+    }>(
+      db,
+      `SELECT DISTINCT ON (job) job, status, result, finished_at, trigger FROM job_runs ORDER BY job, started_at DESC`,
+    ),
+
   byStatus: (db: Db, planId: number | null) =>
     query<{ status: string; count: number }>(
       db,

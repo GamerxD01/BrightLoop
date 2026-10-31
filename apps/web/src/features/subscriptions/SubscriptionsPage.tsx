@@ -17,7 +17,15 @@ import { useLookups } from '../../lib/queries';
 import type { Subscription, SubscriptionRow } from '../../lib/types';
 import { useUrlState } from '../../lib/url-state';
 
-const DEFAULTS = { q: '', status: '', planId: '', page: '1', sort: 'createdAt', dir: 'desc' };
+const DEFAULTS = {
+  q: '',
+  status: '',
+  planId: '',
+  expiringWithin: '',
+  page: '1',
+  sort: 'createdAt',
+  dir: 'desc',
+};
 
 const columns: Column<SubscriptionRow>[] = [
   {
@@ -151,8 +159,8 @@ export function SubscriptionsPage() {
           <button
             type="button"
             className="tab"
-            aria-pressed={!f.status}
-            onClick={() => set({ status: '' })}
+            aria-pressed={!f.status && !f.expiringWithin}
+            onClick={() => set({ status: '', expiringWithin: '' })}
           >
             All
           </button>
@@ -161,12 +169,20 @@ export function SubscriptionsPage() {
               key={s}
               type="button"
               className="tab"
-              aria-pressed={f.status === s}
-              onClick={() => set({ status: s })}
+              aria-pressed={f.status === s && !f.expiringWithin}
+              onClick={() => set({ status: s, expiringWithin: '' })}
             >
               {LABELS.subscriptionStatus[s]}
             </button>
           ))}
+          <button
+            type="button"
+            className="tab"
+            aria-pressed={f.expiringWithin === '30'}
+            onClick={() => set({ status: '', expiringWithin: '30' })}
+          >
+            Ending in 30 days
+          </button>
         </div>
         <select
           className="input select input--inline"

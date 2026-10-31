@@ -313,6 +313,23 @@ export interface ReportSummary {
   monthly: { month: string; invoiced: number; collected: number }[];
   byStatus: { status: SubscriptionStatus; count: number }[];
   byPlan: { planId: number; planName: string; active: number; mrr: number }[];
+  renewalsDue: {
+    id: number;
+    number: string;
+    customerName: string;
+    planName: string;
+    expiryDate: string;
+    daysLeft: number;
+    renewalId: number | null;
+    noticeSent: boolean;
+  }[];
+  automation: {
+    job: string;
+    status: string;
+    result: Record<string, unknown> | null;
+    finishedAt: string | null;
+    trigger: string;
+  }[];
   topOverdue: {
     id: number;
     number: string;

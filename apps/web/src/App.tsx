@@ -30,6 +30,7 @@ import { TemplateFormPage, TemplatesPage } from './features/templates/TemplatesP
 import { DiscountFormPage, DiscountsPage } from './features/discounts/DiscountsPages';
 import { UsersPage } from './features/users/UsersPage';
 import { CompanyPage } from './features/company/CompanyPage';
+import { AutomationPage } from './features/automation/AutomationPage';
 import { OutboxEmailPage, OutboxPage } from './features/outbox/OutboxPages';
 import { BillingPage } from './features/billing/BillingPage';
 import {
@@ -149,6 +150,7 @@ export function App() {
             </RequireRole>
           }
         />
+        <Route path="automation" element={<AutomationPage />} />
         <Route path="outbox" element={<OutboxPage />} />
         <Route path="outbox/:id" element={<OutboxEmailPage />} />
         <Route
