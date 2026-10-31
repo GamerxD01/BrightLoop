@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { adminOnly, authenticate, backOffice, customerOnly } from './middleware/auth';
 import { authRoutes } from './modules/auth/auth.routes';
 import { automationRoutes } from './modules/automation/automation.routes';
+import { bankRoutes } from './modules/bank/bank.routes';
 import { billingRoutes } from './modules/billing/billing.routes';
 import { catalogRoutes } from './modules/catalog/catalog.routes';
 import { brandRoutes, companyRoutes } from './modules/company/company.routes';
@@ -40,6 +41,7 @@ export const apiRoutes = Router()
   .use('/invoices', authenticate, backOffice, invoicesRoutes)
   .use('/payments', authenticate, backOffice, paymentsRoutes)
   .use('/billing', authenticate, backOffice, billingRoutes)
+  .use('/bank-imports', authenticate, backOffice, bankRoutes)
   .use('/automation', authenticate, backOffice, automationRoutes)
   .use('/outbox', authenticate, backOffice, outboxRoutes)
   .use('/reports', authenticate, backOffice, reportsRoutes);

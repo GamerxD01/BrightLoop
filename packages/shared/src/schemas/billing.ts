@@ -184,3 +184,22 @@ export const reportQuerySchema = z.object({
   planId: idSchema.optional(),
 });
 export type ReportQuery = z.infer<typeof reportQuerySchema>;
+
+/** A bank statement uploaded as text; the browser reads the file, so no multipart parser is needed. */
+export const bankImportSchema = z.object({
+  filename: z.string().trim().min(1, 'Name the file').max(200),
+  content: z.string().min(1, 'The file is empty').max(2_000_000, 'Files up to about 2 MB'),
+});
+
+export const bankLineUpdateSchema = z
+  .object({
+    invoiceNumber: z.string().trim().max(40).nullable().optional(),
+    ignore: z.boolean().optional(),
+  })
+  .refine((v) => !(v.ignore && v.invoiceNumber), {
+    message: 'Either ignore the line or choose an invoice',
+  });
+
+export const bankPostSchema = z.object({
+  lineIds: z.array(idSchema).min(1, 'Pick at least one line').max(5000),
+});

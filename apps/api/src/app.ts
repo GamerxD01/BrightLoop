@@ -22,7 +22,14 @@ export function createApp() {
       },
     }),
   );
-  app.use(express.json({ limit: '100kb' }));
+  // Small bodies everywhere; bank statement uploads alone may be larger.
+  const smallJson = express.json({ limit: '100kb' });
+  const statementJson = express.json({ limit: '2.5mb' });
+  app.use((req, res, next) =>
+    req.method === 'POST' && req.path === '/api/bank-imports'
+      ? statementJson(req, res, next)
+      : smallJson(req, res, next),
+  );
   app.use(cookieParser());
   app.use(requestContext);
   app.use('/api', rateLimit({ windowMs: 60_000, max: 600 }));

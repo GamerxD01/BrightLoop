@@ -3,6 +3,7 @@ export * from './money';
 export * from './dates';
 export * from './pricing';
 export * from './proration';
+export * from './bank';
 export * from './workflow';
 export * from './schemas';
 export * from './gst';

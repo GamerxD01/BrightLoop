@@ -31,6 +31,7 @@ import { DiscountFormPage, DiscountsPage } from './features/discounts/DiscountsP
 import { UsersPage } from './features/users/UsersPage';
 import { CompanyPage } from './features/company/CompanyPage';
 import { AutomationPage } from './features/automation/AutomationPage';
+import { BankImportPage, BankImportsPage } from './features/bank/BankPages';
 import { OutboxEmailPage, OutboxPage } from './features/outbox/OutboxPages';
 import { BillingPage } from './features/billing/BillingPage';
 import {
@@ -151,6 +152,8 @@ export function App() {
           }
         />
         <Route path="automation" element={<AutomationPage />} />
+        <Route path="bank" element={<BankImportsPage />} />
+        <Route path="bank/:id" element={<BankImportPage />} />
         <Route path="outbox" element={<OutboxPage />} />
         <Route path="outbox/:id" element={<OutboxEmailPage />} />
         <Route

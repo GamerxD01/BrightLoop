@@ -472,3 +472,16 @@ fieldset.bare { border: 0; margin: 0; padding: 0; min-width: 0; }
 .change__head { font-weight: 600; color: var(--color-print); }
 .credit-balance { margin-bottom: var(--space-sm); }
 @media (max-width: 75rem) { .change { grid-template-columns: minmax(0, 1fr); } .change__preview { position: static; } }
+
+/* ── Bank statements ───────────────────────────────────────────────── */
+.upload { display: grid; gap: var(--space-md); }
+.upload__actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.upload__note { font-size: var(--text-sm); }
+.stats--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pick { width: 18px; height: 18px; accent-color: var(--color-board); }
+.line-invoice { display: grid; gap: var(--space-3xs); }
+.line-invoice__actions { display: flex; gap: var(--space-2xs); margin-left: calc(-1 * var(--space-xs)); }
+.line-edit { display: flex; flex-wrap: wrap; gap: var(--space-2xs); align-items: center; }
+.line-edit .input { width: 11rem; min-height: 32px; }
+.line-edit__error { flex-basis: 100%; }
+@media (max-width: 75rem) { .stats--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--space-lg); } .stats--4 .stat:nth-child(3) { padding-left: 0; border-left: 0; } }

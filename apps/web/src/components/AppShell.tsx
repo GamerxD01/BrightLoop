@@ -31,6 +31,7 @@ const NAV: NavGroup[] = [
     items: [
       { to: '/invoices', label: 'Invoices' },
       { to: '/payments', label: 'Payments' },
+      { to: '/bank', label: 'Bank statements' },
       { to: '/billing', label: 'Billing run' },
       { to: '/automation', label: 'Automation' },
     ],
