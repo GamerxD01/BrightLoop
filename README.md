@@ -13,7 +13,7 @@ Products and variants, plans, quotations, subscriptions with a guarded lifecycle
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791?logo=postgresql&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-78%20passing-2ea44f)
 
-[▶ Watch the 6-minute walkthrough](docs/brightloop-walkthrough.mp4) · [Run it](#run-it) · [Demo script](docs/DEMO.md) · [Architecture](#architecture) · [Database](#database)
+[▶ Watch the 6-minute walkthrough](docs/brightloop-walkthrough-full.mp4) · [Run it](#run-it) · [Demo script](docs/DEMO.md) · [Architecture](#architecture) · [Database](#database)
 
 <img src="docs/screenshots/dashboard.jpg" alt="The finance dashboard: active subscriptions, recurring revenue, collected, outstanding and overdue, revenue by month and the overdue list" width="100%">
 
@@ -23,7 +23,7 @@ Built for the Odoo hackathon problem statement *Subscription Management System*,
 
 ## Walkthrough video
 
-A narrated tour of every function for all three roles (admin, staff and customer): [**docs/brightloop-walkthrough.mp4**](docs/brightloop-walkthrough.mp4).
+A narrated tour of every function for all three roles (admin, staff and customer): [**docs/brightloop-walkthrough-full.mp4**](docs/brightloop-walkthrough-full.mp4), 6.5 minutes. The two parts are also separate: [the main tour](docs/brightloop-walkthrough.mp4) and [subscribing from the portal](docs/brightloop-plans.mp4).
 
 | Part | Covers |
 |---|---|
