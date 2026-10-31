@@ -1,8 +1,52 @@
-# Brightloop — Subscription Management System
+<div align="center">
 
-One system that runs a subscription business: products and variants, plans, quotations, subscriptions with a guarded lifecycle, GST invoices that bill themselves, discounts, payments, bank statement matching, a live finance dashboard and a self-service customer portal.
+# Brightloop
+
+**Subscription management, from quote to cash, without double billing.**
+
+Products and variants, plans, quotations, subscriptions with a guarded lifecycle, GST invoices that bill themselves, discounts, payments, bank statement matching, a live finance dashboard and a self-service customer portal.
+
+![Node.js](https://img.shields.io/badge/Node.js-20.12+-3c873a?logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-18-149eca?logo=react&logoColor=white)
+![Express](https://img.shields.io/badge/Express-5-222?logo=express&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791?logo=postgresql&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-74%20passing-2ea44f)
+
+[▶ Watch the 6-minute walkthrough](docs/brightloop-walkthrough.mp4) · [Run it](#run-it) · [Demo script](docs/DEMO.md) · [Architecture](#architecture) · [Database](#database)
+
+<img src="docs/screenshots/dashboard.jpg" alt="The finance dashboard: active subscriptions, recurring revenue, collected, outstanding and overdue, revenue by month and the overdue list" width="100%">
+
+</div>
 
 Built for the Odoo hackathon problem statement *Subscription Management System*, from scratch: our own REST API, a PostgreSQL schema written by hand, no backend-as-a-service and no paid third-party APIs. Email is optional SMTP; without it, every email is kept in an in-app outbox.
+
+## Walkthrough video
+
+A narrated tour of every function for all three roles (admin, staff and customer): [**docs/brightloop-walkthrough.mp4**](docs/brightloop-walkthrough.mp4).
+
+| Part | Covers |
+|---|---|
+| Admin | dashboard, products and variants, plans, quotation templates, discounts, a new subscription with live pricing, the lifecycle, the billing run, the GST invoice, bank statement matching, payments, automation, company profile, team and activity log |
+| Staff | what staff can and cannot do, enforced by the server, and live updates |
+| Customer | the portal, accepting quotations, changing seats mid-period with part-period pricing, invoices and PDFs |
+
+## Highlights
+
+<table>
+<tr>
+<td width="50%"><b>Live pricing, same code as billing</b><br>The price card updates as you type, discount and tax included. The browser and the server run the same pricing engine, so the preview and the invoice can never disagree.<br><br><img src="docs/screenshots/new-subscription.jpg" alt="New subscription form with the live price card"></td>
+<td width="50%"><b>Real GST tax invoices</b><br>Logo, both GSTINs, HSN/SAC, CGST + SGST or IGST by place of supply, the total in words and a UPI QR code. PDF download, print and email.<br><br><img src="docs/screenshots/invoice.jpg" alt="An overdue GST tax invoice with the payment panel"></td>
+</tr>
+<tr>
+<td><b>Bank statement matching</b><br>Upload the statement; every line says why it matched (invoice number, part payment, name and amount). Record them all in one click. A bank transaction can pay once, ever.<br><br><img src="docs/screenshots/bank.jpg" alt="Bank statement review with matched lines ticked"></td>
+<td><b>Self-service with fair part-period billing</b><br>Customers change seats and add-ons mid-period and see exactly what is charged today and what comes back as credit, before anything is saved.<br><br><img src="docs/screenshots/portal-change.jpg" alt="Customer portal previewing a seat change"></td>
+</tr>
+<tr>
+<td><b>Billing that cannot double-bill</b><br>Runs by itself every day. A partial unique index allows one invoice per subscription per period; the run locks with <code>FOR UPDATE SKIP LOCKED</code>, so two servers are safe too.<br><br><img src="docs/screenshots/billing.jpg" alt="Billing run page"></td>
+<td><b>Automation you can see</b><br>Four daily jobs (start subscriptions, billing, renewal notices, overdue reminders at 3, 7 and 14 days), each claiming its day so it runs once.<br><br><img src="docs/screenshots/automation.jpg" alt="Automation page with job history"></td>
+</tr>
+</table>
 
 ## Run it
 
@@ -31,7 +75,19 @@ npm run dev          # API on :4000, web app on http://localhost:5173
 | Staff | `staff@brightloop.test` | `Brightloop@2026` |
 | Customer (portal) | `iyer.textiles@example.in` | `Brightloop@2026` |
 
-A walkthrough for judging is in [docs/DEMO.md](docs/DEMO.md).
+A step-by-step walkthrough for judging is in [docs/DEMO.md](docs/DEMO.md).
+
+## Three roles
+
+| | Admin | Staff | Customer |
+|---|:---:|:---:|:---:|
+| Dashboard, customers, subscriptions, invoices, payments, bank statements | ✓ | ✓ | |
+| Quotation templates | ✓ | ✓ | |
+| Products, variants, plans, taxes, discount rules | ✓ | view only | |
+| Company profile, team, activity log | ✓ | | |
+| Own subscriptions and invoices, accept quotations, change seats | | | ✓ |
+
+Who may call what is declared once per route mount on the server; the menu only mirrors it. Another customer's record answers 404, not 403.
 
 ## The billing month, scene by scene
 
@@ -45,15 +101,85 @@ A walkthrough for judging is in [docs/DEMO.md](docs/DEMO.md).
 | **The money comes in** | Payments with method, amount, date and note, part payments allowed, overpayment refused. **Upload the bank statement** and each line is matched to its invoice; record them all in one click. Overdue invoices are **chased automatically**: polite at 3 days, firm at 7, final at 14. |
 | **The finance lead, at month end** | One live dashboard: active subscriptions, monthly recurring revenue, collected, outstanding and overdue, revenue by month and plan, the renewal radar, and the book's health (churn, revenue per customer, collection rate, days to get paid). Filters by date and plan; every list exports to CSV. Every page answers well under the 2-second target with 20,000 subscriptions. |
 
-Beyond the brief, things a real billing month needs:
+### The subscription lifecycle
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Draft
+    Draft --> Quotation: send quotation
+    Quotation --> Draft: back to draft
+    Quotation --> Confirmed: confirm / customer accepts
+    Confirmed --> Active: start date (automatic)
+    Active --> Paused: pause (if the plan allows)
+    Paused --> Active: resume
+    Draft --> Closed
+    Quotation --> Closed
+    Confirmed --> Closed
+    Active --> Closed: close / expiry
+    Paused --> Closed
+    Closed --> [*]
+```
+
+The same transition table lives in `packages/shared` and drives both the buttons the UI shows and the checks the API makes.
+
+## Screens
+
+<table>
+<tr>
+<td width="33%"><img src="docs/screenshots/subscriptions.jpg" alt="Subscriptions list"><br><sub>Subscriptions, filtered and sorted in SQL</sub></td>
+<td width="33%"><img src="docs/screenshots/subscription.jpg" alt="Subscription detail with timeline"><br><sub>A subscription and its timeline</sub></td>
+<td width="33%"><img src="docs/screenshots/invoices.jpg" alt="Invoices list"><br><sub>Invoices with overdue filter and CSV export</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/product.jpg" alt="Product with variants"><br><sub>A product, its tax, HSN/SAC and variants</sub></td>
+<td><img src="docs/screenshots/plans.jpg" alt="Plans"><br><sub>Plans and their rules</sub></td>
+<td><img src="docs/screenshots/discounts.jpg" alt="Discounts"><br><sub>Discount rules (admin only)</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/dashboard-health.jpg" alt="Dashboard renewals and health"><br><sub>Renewal radar and the health of the book</sub></td>
+<td><img src="docs/screenshots/company.jpg" alt="Company profile"><br><sub>Company profile and brand, used on every invoice</sub></td>
+<td><img src="docs/screenshots/activity.jpg" alt="Activity log"><br><sub>Activity log, linked to request ids</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/portal.jpg" alt="Customer portal"><br><sub>The customer portal</sub></td>
+<td><img src="docs/screenshots/login.jpg" alt="Sign in"><br><sub>Sign in</sub></td>
+<td align="center"><img src="docs/screenshots/mobile-dashboard.jpg" alt="Dashboard on a phone" width="60%"><br><sub>Every screen works on a phone</sub></td>
+</tr>
+</table>
+
+## Beyond the brief
 
 - **GST tax invoices**: seller and buyer GSTIN, HSN/SAC per line, place of supply, CGST + SGST within the state and IGST across states, the total in words, and a **UPI QR code** to pay from. Seller details are snapshotted on each invoice, so a later profile edit never rewrites an issued one.
-- **Customer self-service**: change seats and switch add-ons on or off mid-period. Additions are charged for the days left on an adjustment invoice; removals become account credit, spent automatically on the next invoice. The portal previews the exact amounts first.
+- **Customer self-service**: change seats and switch add-ons on or off mid-period. Additions are charged for the days left on an adjustment invoice; removals become account credit, spent automatically on the next invoice.
 - **Renewal radar**: subscriptions ending in 30 days, with notices to the customer at 30 and 7 days.
 - **Company profile and brand**: logo upload, legal name, address, GSTIN (with its check digit validated), bank and UPI details, used on every invoice and email. Fonts are bundled, so the app looks the same offline.
+- **Realtime**: open screens refresh themselves through Server-Sent Events when a customer pays, accepts or changes something.
 - **Activity log** for the admin: who changed what, linked to the record and to the request id in the server log.
 
 ## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Browser
+      W[React 18 + Vite<br/>TanStack Query]
+    end
+    subgraph Shared["packages/shared"]
+      S[Zod schemas · pricing engine<br/>proration · workflow tables<br/>GST · bank parser · money]
+    end
+    subgraph API["apps/api · Express 5"]
+      R[routes → controller<br/>→ service → repository]
+      J[daily jobs<br/>billing · reminders · renewals]
+      E[SSE /api/events]
+    end
+    DB[(PostgreSQL<br/>hand-written SQL)]
+    W -- REST + httpOnly cookie --> R
+    E -- live events --> W
+    W -.uses.-> S
+    R -.uses.-> S
+    R --> DB
+    J --> DB
+```
 
 ```
 apps/
@@ -66,16 +192,31 @@ packages/
                 engines, workflow tables, GST, bank statement parser, money and dates
 ```
 
-- **Modular monolith.** Each area owns its routes, controller, service and repository: auth, users, customers, company, catalog, plans, templates, discounts, subscriptions, changes, credits, invoices, billing, automation, payments, bank, notifications, reports, exports, activity, portal, realtime. Who may call what is declared once, per mount, in `routes.ts`.
+- **Modular monolith.** Each area owns its routes, controller, service and repository: auth, users, customers, company, catalog, plans, templates, discounts, subscriptions, changes, credits, invoices, billing, automation, payments, bank, notifications, reports, exports, activity, portal, realtime.
 - **One source of truth for rules.** The browser and the API run the same validation schemas, the same pricing engine and the same workflow tables, so a form, a live preview and the saved invoice can never disagree.
-- **Realtime without a library.** Services publish an event after their transaction commits; `/api/events` streams it as Server-Sent Events, and open screens refresh themselves. Customers receive only events about their own records.
+- **Realtime without a library.** Services publish an event after their transaction commits; `/api/events` streams it as Server-Sent Events. Customers receive only events about their own records.
 - **Automation that is safe to scale out.** Each daily job claims its day through a unique index, so several servers never run it twice; each reminder stage and renewal notice is claimed before its email goes.
 
 ## Database
 
-Migrations in `apps/api/src/db/migrations`:
+```mermaid
+erDiagram
+    CUSTOMERS ||--o{ SUBSCRIPTIONS : has
+    CUSTOMERS ||--o{ INVOICES : billed
+    CUSTOMERS ||--o{ CUSTOMER_CREDITS : holds
+    PLANS ||--o{ SUBSCRIPTIONS : priced_by
+    PRODUCTS ||--o{ PRODUCT_VARIANTS : sold_as
+    SUBSCRIPTIONS ||--o{ SUBSCRIPTION_LINES : contains
+    SUBSCRIPTIONS ||--o{ SUBSCRIPTION_EVENTS : timeline
+    SUBSCRIPTIONS ||--o{ INVOICES : generates
+    DISCOUNTS ||--o{ SUBSCRIPTION_DISCOUNTS : attached
+    INVOICES ||--o{ INVOICE_LINES : contains
+    INVOICES ||--o{ PAYMENTS : paid_by
+    BANK_IMPORTS ||--o{ BANK_LINES : contains
+    BANK_LINES |o--o| PAYMENTS : posts
+```
 
-| File | Adds |
+| Migration | Adds |
 |---|---|
 | `001_init.sql` | customers, users, reset tokens, taxes, payment terms, products, attributes, variants, plans, templates, discounts, subscriptions and their lines, discounts and events, invoices and lines, discount usages, payments, document sequences, audit log |
 | `002_brand_gst_email.sql` | company profile (one row), GSTIN and state on customers, HSN/SAC, the CGST/SGST/IGST split on invoices, the email outbox |
@@ -87,7 +228,7 @@ Migrations in `apps/api/src/db/migrations`:
 Decisions worth knowing:
 
 - **Money is `BIGINT` paise** and rates are basis points (18% = 1800). No floating point touches an amount.
-- **"Nothing billed twice"** is enforced by the database: a partial unique index allows one live recurring invoice per subscription per period. The billing run locks its batch with `FOR UPDATE SKIP LOCKED`, so re-running it, or running it on two servers, is safe. A subscription that missed periods gets one invoice for each.
+- **"Nothing billed twice"** is enforced by the database: a partial unique index allows one live recurring invoice per subscription per period. A subscription that missed periods gets one invoice for each.
 - **A bank transaction can pay once, ever**: a partial unique index on the line's fingerprint where it was posted.
 - **CHECK constraints** stop overpayment, a Paid invoice that is not fully paid, discount overuse, a GST split that does not add up to the tax, a negative price, a bad GSTIN, IFSC, UPI id or pincode, and bad date ranges. Statuses are PostgreSQL enums.
 - **Prices are snapshotted** onto subscription and invoice lines, so a later catalog change never rewrites history.
