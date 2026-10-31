@@ -77,6 +77,15 @@ async function bulk() {
        FROM subscriptions s JOIN plans p ON p.id = s.plan_id LEFT JOIN taxes t ON t.id = p.tax_id
        WHERE s.number LIKE 'SUB/BULK/%'`,
     );
+    // Status history, so churn and timelines see the bulk book like the real one.
+    await client.query(
+      `INSERT INTO subscription_events (subscription_id, from_status, to_status, note, created_at)
+       SELECT id, 'confirmed'::subscription_status, 'active'::subscription_status, 'Bulk data', start_date::timestamptz
+       FROM subscriptions WHERE number LIKE 'SUB/BULK/%' AND status IN ('active', 'paused', 'closed')
+       UNION ALL
+       SELECT id, 'active'::subscription_status, 'closed'::subscription_status, 'Bulk data', LEAST(start_date + (60 + (id % 200))::int, CURRENT_DATE)::timestamptz
+       FROM subscriptions WHERE number LIKE 'SUB/BULK/%' AND status = 'closed'`,
+    );
     lap('lines');
     await client.query(
       `UPDATE subscriptions s SET amount_untaxed = l.untaxed, amount_tax = l.tax, amount_total = l.untaxed + l.tax
@@ -90,13 +99,15 @@ async function bulk() {
     lap('totals');
     await client.query(
       `INSERT INTO invoices (number, subscription_id, customer_id, status, period_start, period_end, invoice_date, due_date,
-                             amount_untaxed, amount_tax, amount_total, amount_paid, confirmed_at, paid_at)
+                             amount_untaxed, amount_tax, amount_total, amount_paid, confirmed_at, paid_at,
+                             gst_mode, amount_cgst, amount_sgst)
        SELECT 'INV/BULK/' || s.id || '/' || to_char(m, 'YYMM'), s.id, s.customer_id,
               CASE WHEN m < date_trunc('month', CURRENT_DATE) - interval '2 months' OR s.id % 4 <> 0 THEN 'paid' ELSE 'confirmed' END::invoice_status,
               m::date, (m + interval '1 month' - interval '1 day')::date, m::date, (m + interval '15 days')::date,
               s.amount_untaxed, s.amount_tax, s.amount_total,
               CASE WHEN m < date_trunc('month', CURRENT_DATE) - interval '2 months' OR s.id % 4 <> 0 THEN s.amount_total ELSE 0 END,
-              m, CASE WHEN m < date_trunc('month', CURRENT_DATE) - interval '2 months' OR s.id % 4 <> 0 THEN m + interval '10 days' END
+              m, CASE WHEN m < date_trunc('month', CURRENT_DATE) - interval '2 months' OR s.id % 4 <> 0 THEN m + interval '10 days' END,
+              'intra', s.amount_tax / 2, s.amount_tax - s.amount_tax / 2
        FROM subscriptions s
        CROSS JOIN LATERAL generate_series(date_trunc('month', s.start_date), date_trunc('month', CURRENT_DATE), interval '1 month') m
        JOIN plans p ON p.id = s.plan_id AND p.billing_period = 'monthly'
@@ -104,8 +115,10 @@ async function bulk() {
     );
     lap('invoices');
     await client.query(
-      `INSERT INTO invoice_lines (invoice_id, description, quantity, unit_price, tax_rate_bp, tax_amount, subtotal, total)
-       SELECT i.id, l.description, l.quantity, l.unit_price, l.tax_rate_bp, i.amount_tax, i.amount_untaxed, i.amount_total
+      `INSERT INTO invoice_lines (invoice_id, description, quantity, unit_price, tax_rate_bp, tax_amount, subtotal, total,
+                                  hsn_sac, cgst, sgst)
+       SELECT i.id, l.description, l.quantity, l.unit_price, l.tax_rate_bp, i.amount_tax, i.amount_untaxed, i.amount_total,
+              l.hsn_sac, i.amount_cgst, i.amount_sgst
        FROM invoices i JOIN subscription_lines l ON l.subscription_id = i.subscription_id
        WHERE i.number LIKE 'INV/BULK/%'`,
     );
@@ -119,7 +132,8 @@ async function bulk() {
 
     lap('payments');
     await client.query('COMMIT');
-    await client.query('ANALYZE');
+    // Fresh visibility map and statistics, so index-only scans and plans are right straight away.
+    await client.query('VACUUM ANALYZE');
     const counts = await client.query(
       `SELECT (SELECT count(*) FROM customers) AS customers, (SELECT count(*) FROM subscriptions) AS subscriptions,
               (SELECT count(*) FROM invoices) AS invoices, (SELECT count(*) FROM payments) AS payments`,
