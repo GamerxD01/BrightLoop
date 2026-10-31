@@ -1,28 +1,36 @@
 {
   "name": "brightloop",
   "private": true,
-  "description": "Subscription Management System — plans, subscriptions, recurring billing, payments and revenue in one place.",
-  "workspaces": ["packages/shared", "apps/api", "apps/web"],
+  "description": "Subscription Management System \u2014 plans, subscriptions, recurring billing, payments and revenue in one place.",
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web"
+  ],
   "scripts": {
-    "dev": "npm run dev --workspace apps/api & npm run dev --workspace apps/web",
+    "dev": "concurrently -n api,web -c auto \"npm run dev --workspace apps/api\" \"npm run dev --workspace apps/web\"",
     "dev:api": "npm run dev --workspace apps/api",
     "dev:web": "npm run dev --workspace apps/web",
     "db:migrate": "npm run db:migrate --workspace apps/api",
     "db:seed": "npm run db:seed --workspace apps/api",
     "db:seed:bulk": "npm run db:seed:bulk --workspace apps/api",
     "build": "npm run build --workspace apps/web",
-    "start": "npm run start --workspace apps/api",
+    "start": "npm run build && npm run start --workspace apps/api",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspace packages/shared && npm run test --workspace apps/api",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "setup": "npm run db:setup --workspace apps/api"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "eslint": "^9.17.0",
     "prettier": "^3.4.2",
     "typescript": "~5.7.2",
-    "typescript-eslint": "^8.18.2"
+    "typescript-eslint": "^8.18.2",
+    "concurrently": "^9.1.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20.12"
+  }
 }

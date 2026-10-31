@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
-    "start": "tsx --env-file-if-exists=.env src/server.ts",
-    "db:migrate": "tsx --env-file-if-exists=.env src/db/migrate.ts",
-    "db:seed": "tsx --env-file-if-exists=.env src/db/seed.ts",
-    "db:seed:bulk": "tsx --env-file-if-exists=.env src/db/seed-bulk.ts",
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "db:setup": "tsx src/db/setup.ts",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:seed:bulk": "tsx src/db/seed-bulk.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
