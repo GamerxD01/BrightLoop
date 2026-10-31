@@ -3,10 +3,12 @@ import { adminOnly, authenticate, backOffice, customerOnly } from './middleware/
 import { authRoutes } from './modules/auth/auth.routes';
 import { billingRoutes } from './modules/billing/billing.routes';
 import { catalogRoutes } from './modules/catalog/catalog.routes';
+import { brandRoutes, companyRoutes } from './modules/company/company.routes';
 import { customersRoutes } from './modules/customers/customers.routes';
 import { discountsRoutes } from './modules/discounts/discounts.routes';
 import { invoicesRoutes } from './modules/invoices/invoices.routes';
 import { lookupsRoutes } from './modules/lookups.routes';
+import { outboxRoutes } from './modules/notifications/outbox.routes';
 import { paymentsRoutes } from './modules/payments/payments.routes';
 import { plansRoutes } from './modules/plans/plans.routes';
 import { portalRoutes } from './modules/portal/portal.routes';
@@ -22,6 +24,8 @@ import { usersRoutes } from './modules/users/users.routes';
  */
 export const apiRoutes = Router()
   .use('/auth', authRoutes)
+  .use('/brand', brandRoutes)
+  .use('/company', companyRoutes)
   .use('/events', authenticate, realtimeRoutes)
   .use('/portal', authenticate, customerOnly, portalRoutes)
   .use('/users', authenticate, adminOnly, usersRoutes)
@@ -35,4 +39,5 @@ export const apiRoutes = Router()
   .use('/invoices', authenticate, backOffice, invoicesRoutes)
   .use('/payments', authenticate, backOffice, paymentsRoutes)
   .use('/billing', authenticate, backOffice, billingRoutes)
+  .use('/outbox', authenticate, backOffice, outboxRoutes)
   .use('/reports', authenticate, backOffice, reportsRoutes);

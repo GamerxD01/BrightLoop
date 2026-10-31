@@ -29,6 +29,8 @@ import { PlanFormPage, PlansPage } from './features/plans/PlansPages';
 import { TemplateFormPage, TemplatesPage } from './features/templates/TemplatesPages';
 import { DiscountFormPage, DiscountsPage } from './features/discounts/DiscountsPages';
 import { UsersPage } from './features/users/UsersPage';
+import { CompanyPage } from './features/company/CompanyPage';
+import { OutboxEmailPage, OutboxPage } from './features/outbox/OutboxPages';
 import { BillingPage } from './features/billing/BillingPage';
 import {
   PortalHomePage,
@@ -139,6 +141,16 @@ export function App() {
         <Route path="discounts/new" element={<DiscountFormPage />} />
         <Route path="discounts/:id" element={<DiscountFormPage />} />
         <Route path="taxes" element={<SettingsPage />} />
+        <Route
+          path="company"
+          element={
+            <RequireRole roles={['admin']}>
+              <CompanyPage />
+            </RequireRole>
+          }
+        />
+        <Route path="outbox" element={<OutboxPage />} />
+        <Route path="outbox/:id" element={<OutboxEmailPage />} />
         <Route
           path="users"
           element={

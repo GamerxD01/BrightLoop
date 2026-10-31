@@ -8,6 +8,7 @@ import {
   signupSchema,
 } from '@brightloop/shared';
 import { AuthLayout } from '../../components/AppShell';
+import { LoginScene } from '../../components/LoginScene';
 import { Button } from '../../components/Button';
 import { TextField } from '../../components/Field';
 import { api } from '../../lib/api';
@@ -16,17 +17,6 @@ import { useFormSubmit } from '../../lib/forms';
 import type { User } from '../../lib/types';
 
 const home = (u: User) => (u.role === 'customer' ? '/portal' : '/');
-
-function DeskNote() {
-  return (
-    <div className="desk-note stock">
-      <p className="desk-note__title">One place for the billing month</p>
-      <p>
-        Plans, subscriptions, invoices and payments, from the first quote to the money in the bank.
-      </p>
-    </div>
-  );
-}
 
 /** Live checklist under the password field: the same rules the server enforces. */
 function PasswordRules({ value }: { value: string }) {
@@ -54,7 +44,7 @@ export function LoginPage() {
   });
 
   return (
-    <AuthLayout title="Sign in" aside={<DeskNote />}>
+    <AuthLayout title="Sign in" aside={<LoginScene />}>
       <form
         ref={formRef}
         className="stack"
@@ -112,7 +102,7 @@ export function SignupPage() {
   });
 
   return (
-    <AuthLayout title="Create your account" aside={<DeskNote />}>
+    <AuthLayout title="Create your account" aside={<LoginScene />}>
       <form
         ref={formRef}
         className="stack"
@@ -181,7 +171,7 @@ export function ForgotPasswordPage() {
   );
 
   return (
-    <AuthLayout title="Reset your password" aside={<DeskNote />}>
+    <AuthLayout title="Reset your password" aside={<LoginScene />}>
       {sent ? (
         <div className="stack">
           <p>
@@ -237,7 +227,7 @@ export function ResetPasswordPage() {
   );
 
   return (
-    <AuthLayout title="Choose a new password" aside={<DeskNote />}>
+    <AuthLayout title="Choose a new password" aside={<LoginScene />}>
       {!token ? (
         <div className="stack">
           <p>This page needs the link from your reset email.</p>

@@ -6,6 +6,11 @@ import { ApiError } from './lib/api';
 import { AuthProvider } from './lib/auth';
 import { ToastProvider } from './components/Toast';
 import { App } from './App';
+// Brand fonts ship with the app: the same look online, offline and in the PDF.
+import '@fontsource/instrument-sans/400.css';
+import '@fontsource/instrument-sans/500.css';
+import '@fontsource/instrument-sans/600.css';
+import '@fontsource/geist-mono/400.css';
 import './styles/app.css';
 
 const queryClient = new QueryClient({

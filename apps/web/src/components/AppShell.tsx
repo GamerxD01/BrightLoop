@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { LABELS } from '@brightloop/shared';
 import { useAuth, useUser } from '../lib/auth';
 import { useRealtime, type LiveState } from '../lib/realtime';
+import { Wordmark } from './Brand';
 
 interface NavItem {
   to: string;
@@ -42,7 +43,14 @@ const NAV: NavGroup[] = [
       { to: '/taxes', label: 'Taxes and terms' },
     ],
   },
-  { label: 'Admin', items: [{ to: '/users', label: 'Team', adminOnly: true }] },
+  {
+    label: 'Admin',
+    items: [
+      { to: '/company', label: 'Company profile', adminOnly: true },
+      { to: '/users', label: 'Team', adminOnly: true },
+      { to: '/outbox', label: 'Emails sent' },
+    ],
+  },
 ];
 
 const LIVE_TEXT: Record<LiveState, string> = {
@@ -66,14 +74,6 @@ function UserBlock({ live }: { live: LiveState }) {
         Sign out
       </button>
     </div>
-  );
-}
-
-function Wordmark() {
-  return (
-    <NavLink to="/" className="wordmark" aria-label="Brightloop home">
-      Brightloop
-    </NavLink>
   );
 }
 
@@ -145,9 +145,7 @@ export function PortalShell() {
       </a>
       <header className="portal__bar">
         <div className="portal__inner">
-          <NavLink to="/portal" className="wordmark" aria-label="Brightloop portal home">
-            Brightloop
-          </NavLink>
+          <Wordmark to="/portal" />
           <nav aria-label="Portal" className="portal__nav">
             <NavLink to="/portal" end className="navlink">
               My subscriptions
@@ -181,7 +179,7 @@ export function AuthLayout({
   return (
     <div className="authpage">
       <div className="authpage__form">
-        <span className="wordmark">Brightloop</span>
+        <Wordmark to="/login" label="Sign in" />
         <h1>{title}</h1>
         {children}
       </div>
