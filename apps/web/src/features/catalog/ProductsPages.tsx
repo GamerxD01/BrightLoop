@@ -143,6 +143,7 @@ export function ProductFormPage() {
     costPrice: '',
     notes: '',
     taxId: '',
+    hsnSac: '',
     isActive: true,
     variantValueIds: [] as number[],
   });
@@ -156,6 +157,7 @@ export function ProductFormPage() {
         costPrice: paiseToRupeesInput(p.costPrice),
         notes: p.notes ?? '',
         taxId: p.taxId ? String(p.taxId) : '',
+        hsnSac: p.hsnSac ?? '',
         isActive: p.isActive,
         variantValueIds: p.variants.map((v) => v.attributeValueId),
       });
@@ -247,6 +249,14 @@ export function ProductFormPage() {
                   </option>
                 ))}
               </SelectField>
+              <TextField
+                label="HSN/SAC code"
+                hint="Printed on GST invoices"
+                inputMode="numeric"
+                value={f.hsnSac}
+                error={errors.hsnSac}
+                onChange={(e) => setF({ ...f, hsnSac: e.target.value })}
+              />
               <div className="field">
                 <span className="field__label">Status</span>
                 <Checkbox

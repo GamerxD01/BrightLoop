@@ -50,9 +50,11 @@ describe('password reset', () => {
 
     // Replace the stored hash with a known token, as if we had read the email.
     const token = 'k'.repeat(43);
-    await pool.query(`UPDATE password_reset_tokens SET token_hash = $1 WHERE used_at IS NULL`, [
-      sha256(token),
-    ]);
+    await pool.query(
+      `UPDATE password_reset_tokens SET token_hash = $1
+       WHERE used_at IS NULL AND user_id = (SELECT id FROM users WHERE email = 'asha@x.test')`,
+      [sha256(token)],
+    );
 
     const reset = await request(app)
       .post('/api/auth/reset-password')

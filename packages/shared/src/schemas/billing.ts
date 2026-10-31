@@ -7,6 +7,7 @@ import {
   SUBSCRIPTION_STATUSES,
 } from '../constants';
 import { INVOICE_ACTIONS, SUBSCRIPTION_ACTIONS } from '../workflow';
+import { gstinMatchesState, gstinSchema, stateCodeSchema } from './gst';
 import {
   idSchema,
   isoDateSchema,
@@ -58,20 +59,24 @@ export const discountSchema = z
   });
 export type DiscountInput = z.infer<typeof discountSchema>;
 
-export const customerSchema = z.object({
-  name: trimmed('Name', 120),
-  email: z.string().trim().toLowerCase().email('Enter a valid email address').max(254),
-  phone: z
-    .string()
-    .trim()
-    .max(20)
-    .regex(/^[+\d][\d\s-]{6,19}$/, 'Enter a valid phone number')
-    .optional()
-    .or(z.literal(''))
-    .transform((v) => v || null),
-  company: optionalText(160),
-  address: optionalText(500),
-});
+export const customerSchema = z
+  .object({
+    name: trimmed('Name', 120),
+    email: z.string().trim().toLowerCase().email('Enter a valid email address').max(254),
+    phone: z
+      .string()
+      .trim()
+      .max(20)
+      .regex(/^[+\d][\d\s-]{6,19}$/, 'Enter a valid phone number')
+      .optional()
+      .or(z.literal(''))
+      .transform((v) => v || null),
+    company: optionalText(160),
+    address: optionalText(500),
+    gstin: gstinSchema,
+    stateCode: stateCodeSchema,
+  })
+  .superRefine(gstinMatchesState);
 export type CustomerInput = z.infer<typeof customerSchema>;
 
 export const subscriptionLineSchema = z.object({

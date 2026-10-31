@@ -12,6 +12,7 @@ import {
 import { Button } from '../../components/Button';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { MoneyField, SelectField, TextField } from '../../components/Field';
+import { EmailTrail } from '../../components/EmailTrail';
 import { InvoiceSheet } from '../../components/InvoiceSheet';
 import { Money } from '../../components/Money';
 import { Facts, PageHeader, Panel } from '../../components/Page';
@@ -145,6 +146,13 @@ export function InvoiceDetailPage({ portal = false }: { portal?: boolean }) {
         meta={`${inv.customerName}, due ${formatDate(inv.dueDate)}`}
         actions={
           <>
+            <a
+              className="btn btn--secondary"
+              href={`/api${portal ? '/portal' : ''}/invoices/${inv.id}/pdf?download=1`}
+              download
+            >
+              Download PDF
+            </a>
             <Button onClick={() => window.print()}>Print</Button>
             {can('cancel') && (
               <Button variant="danger" onClick={() => setCancelling(true)}>
@@ -230,6 +238,11 @@ export function InvoiceDetailPage({ portal = false }: { portal?: boolean }) {
                   ['Sent', inv.sentAt ? formatDateTime(inv.sentAt) : 'Not yet'],
                 ]}
               />
+            </Panel>
+          )}
+          {!portal && (
+            <Panel title="Emails">
+              <EmailTrail entity="invoice" entityId={inv.id} />
             </Panel>
           )}
         </aside>

@@ -5,7 +5,16 @@
  *   npm run db:seed            seed an empty database
  *   npm run db:seed -- --reset wipe everything first
  */
-import { addDays, addMonths, todayIso, toPaise, type SubscriptionAction } from '@brightloop/shared';
+import {
+  addDays,
+  addMonths,
+  todayIso,
+  toPaise,
+  withGstinCheckDigit,
+  type StateCode,
+  type SubscriptionAction,
+} from '@brightloop/shared';
+import { companyService } from '../modules/company/company.service';
 import { pool, query, queryOne } from './pool';
 import { migrate } from './migrate';
 import { logger } from '../lib/logger';
@@ -50,6 +59,28 @@ async function seed() {
   );
   const actor: Actor = { userId: admin.id, role: 'admin', customerId: null, requestId: 'seed' };
 
+  // ── company profile: the seller printed on every invoice
+  await companyService.update(
+    {
+      brandName: 'Brightloop',
+      legalName: 'Brightloop Software Private Limited',
+      addressLine: '4th Floor, Summit Building, Vibhuti Khand, Gomti Nagar',
+      city: 'Lucknow',
+      stateCode: '09',
+      pincode: '226010',
+      gstin: withGstinCheckDigit('09AAKCB4821M1Z'),
+      email: 'billing@brightloop.test',
+      phone: '+91 522 400 1200',
+      website: null,
+      bankName: 'Demo Bank, Gomti Nagar',
+      bankAccount: '000123456789',
+      bankIfsc: 'DEMO0001234',
+      upiId: 'billing@brightloop',
+      invoiceFooter: 'Payment within the due date keeps your service running without interruption.',
+    },
+    actor,
+  );
+
   // ── catalog
   const gst18 = await catalogService.saveTax({ name: 'GST 18%', rateBp: 1800, isActive: true });
   const gst5 = await catalogService.saveTax({ name: 'GST 5%', rateBp: 500, isActive: true });
@@ -83,6 +114,7 @@ async function seed() {
     taxId: number,
     variants: number[] = [],
     type: 'service' | 'goods' = 'service',
+    hsnSac: string | null = '997331',
   ) =>
     catalogService.saveProduct({
       name,
@@ -92,6 +124,7 @@ async function seed() {
       notes,
       taxId,
       isActive: true,
+      hsnSac,
       variantValueIds: variants,
     });
   const connector = await p(
@@ -103,16 +136,37 @@ async function seed() {
     [odoo.id, generic.id],
   );
   const analytics = await p('Advanced Analytics', 899, 150, 'Dashboards and exports.', gst18.id);
-  const storage = await p('Extra Storage 100 GB', 249, 60, 'Billed per 100 GB block.', gst18.id);
+  const storage = await p(
+    'Extra Storage 100 GB',
+    249,
+    60,
+    'Billed per 100 GB block.',
+    gst18.id,
+    [],
+    'service',
+    '998315',
+  );
   const support = await p(
     'Priority Support',
     1999,
     900,
     '4-hour response, named engineer.',
     gst18.id,
+    [],
+    'service',
+    '998316',
   );
-  const sms = await p('SMS Credits (1,000)', 350, 210, 'Transactional SMS bundle.', gst5.id);
-  await p('Hardware Token', 1200, 700, 'Physical 2FA key, shipped.', gst18.id, [], 'goods');
+  const sms = await p(
+    'SMS Credits (1,000)',
+    350,
+    210,
+    'Transactional SMS bundle.',
+    gst5.id,
+    [],
+    'service',
+    '998419',
+  );
+  await p('Hardware Token', 1200, 700, 'Physical 2FA key, shipped.', gst18.id, [], 'goods', '8523');
 
   // ── plans
   const yearStart = `${todayIso().slice(0, 4)}-01-01`;
@@ -121,6 +175,7 @@ async function seed() {
     startDate: '2025-01-01',
     endDate: null,
     isActive: true,
+    hsnSac: '997331',
   } as const;
   const starter = await plansService.save({
     ...planBase,
@@ -277,22 +332,23 @@ async function seed() {
   );
 
   // ── customers
-  const companies: [string, string, string][] = [
-    ['Kavya Iyer', 'Iyer Textiles', 'Chennai'],
-    ['Rohan Gupta', 'Gupta Hardware', 'Lucknow'],
-    ['Priya Nair', 'Nair Clinics', 'Kochi'],
-    ['Arjun Singh', 'Singh Logistics', 'Ludhiana'],
-    ['Meera Joshi', 'Joshi & Co. Chartered Accountants', 'Pune'],
-    ['Ishaan Reddy', 'Reddy Agritech', 'Hyderabad'],
-    ['Ananya Das', 'Das Bookhouse', 'Kolkata'],
-    ['Vikram Rao', 'Rao Engineering Works', 'Bengaluru'],
-    ['Sara Khan', 'Khan Foods', 'Lucknow'],
-    ['Dev Malhotra', 'Malhotra Retail Group', 'Delhi'],
-    ['Tara Pillai', 'Pillai Studio', 'Thiruvananthapuram'],
-    ['Kabir Shah', 'Shah Pharma Distributors', 'Ahmedabad'],
+  // name, company, city, GST state code, registered for GST
+  const companies: [string, string, string, StateCode, boolean][] = [
+    ['Kavya Iyer', 'Iyer Textiles', 'Chennai', '33', true],
+    ['Rohan Gupta', 'Gupta Hardware', 'Lucknow', '09', true],
+    ['Priya Nair', 'Nair Clinics', 'Kochi', '32', true],
+    ['Arjun Singh', 'Singh Logistics', 'Ludhiana', '03', true],
+    ['Meera Joshi', 'Joshi & Co. Chartered Accountants', 'Pune', '27', true],
+    ['Ishaan Reddy', 'Reddy Agritech', 'Hyderabad', '36', false],
+    ['Ananya Das', 'Das Bookhouse', 'Kolkata', '19', false],
+    ['Vikram Rao', 'Rao Engineering Works', 'Bengaluru', '29', true],
+    ['Sara Khan', 'Khan Foods', 'Lucknow', '09', false],
+    ['Dev Malhotra', 'Malhotra Retail Group', 'Delhi', '07', true],
+    ['Tara Pillai', 'Pillai Studio', 'Thiruvananthapuram', '32', false],
+    ['Kabir Shah', 'Shah Pharma Distributors', 'Ahmedabad', '24', true],
   ];
   const customers: Customer[] = [];
-  for (const [name, company, city] of companies) {
+  for (const [name, company, city, stateCode, registered] of companies) {
     const slug = company
       .toLowerCase()
       .replace(/[^a-z]+/g, '.')
@@ -304,6 +360,13 @@ async function seed() {
         phone: '+91 98765 4' + String(customers.length).padStart(4, '0'),
         company,
         address: `${city}, India`,
+        stateCode,
+        // Demo GSTINs with a valid check digit: state + a made-up PAN + entity + Z.
+        gstin: registered
+          ? withGstinCheckDigit(
+              `${stateCode}AABC${String.fromCharCode(70 + customers.length)}${String(1200 + customers.length * 37).padStart(4, '0')}K1Z`,
+            )
+          : null,
       }),
     );
   }

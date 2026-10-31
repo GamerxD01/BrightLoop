@@ -1,6 +1,7 @@
 import type { InvoiceListQuery, InvoiceStatus } from '@brightloop/shared';
 import { query, queryOne, type Db } from '../../db/pool';
 import { SqlFilter, orderBy } from '../../lib/pagination';
+import type { SellerSnapshot } from '../company/company.service';
 
 export interface InvoiceHeader {
   id: number;
@@ -18,6 +19,13 @@ export interface InvoiceHeader {
   amountTotal: number;
   amountPaid: number;
   sentAt: string | null;
+  gstMode: 'intra' | 'inter';
+  placeOfSupply: string | null;
+  customerGstin: string | null;
+  amountCgst: number;
+  amountSgst: number;
+  amountIgst: number;
+  seller: SellerSnapshot | null;
 }
 
 export interface InvoiceLineRow {
@@ -31,6 +39,10 @@ export interface InvoiceLineRow {
   taxAmount: number;
   subtotal: number;
   total: number;
+  hsnSac: string | null;
+  cgst: number;
+  sgst: number;
+  igst: number;
 }
 
 export interface InvoiceDetail extends InvoiceHeader {
@@ -116,7 +128,8 @@ export const invoicesRepository = {
               COALESCE((SELECT json_agg(json_build_object(
                           'id', l.id, 'productId', l.product_id, 'description', l.description, 'quantity', l.quantity,
                           'unitPrice', l.unit_price, 'discount', l.discount, 'taxRateBp', l.tax_rate_bp,
-                          'taxAmount', l.tax_amount, 'subtotal', l.subtotal, 'total', l.total) ORDER BY l.position, l.id)
+                          'taxAmount', l.tax_amount, 'subtotal', l.subtotal, 'total', l.total, 'hsnSac', l.hsn_sac,
+                          'cgst', l.cgst, 'sgst', l.sgst, 'igst', l.igst) ORDER BY l.position, l.id)
                         FROM invoice_lines l WHERE l.invoice_id = i.id), '[]') AS lines,
               COALESCE((SELECT json_agg(json_build_object(
                           'id', pm.id, 'amount', pm.amount, 'method', pm.method, 'paidOn', pm.paid_on,
@@ -140,8 +153,9 @@ export const invoicesRepository = {
     queryOne<{ id: number }>(
       db,
       `INSERT INTO invoices (number, subscription_id, customer_id, period_start, period_end, invoice_date, due_date,
-                             amount_untaxed, amount_discount, amount_tax, amount_total)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                             amount_untaxed, amount_discount, amount_tax, amount_total, gst_mode, place_of_supply,
+                             customer_gstin, amount_cgst, amount_sgst, amount_igst, seller)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        ON CONFLICT (subscription_id, period_start) WHERE status <> 'cancelled' DO NOTHING
        RETURNING id`,
       [
@@ -156,6 +170,13 @@ export const invoicesRepository = {
         i.amountDiscount,
         i.amountTax,
         i.amountTotal,
+        i.gstMode,
+        i.placeOfSupply,
+        i.customerGstin,
+        i.amountCgst,
+        i.amountSgst,
+        i.amountIgst,
+        i.seller ? JSON.stringify(i.seller) : null,
       ],
     ),
 
@@ -163,12 +184,13 @@ export const invoicesRepository = {
     query(
       db,
       `INSERT INTO invoice_lines (invoice_id, product_id, description, quantity, unit_price, discount, tax_rate_bp,
-                                  tax_amount, subtotal, total, position)
+                                  tax_amount, subtotal, total, position, hsn_sac, cgst, sgst, igst)
        SELECT $1, x.product_id, x.description, x.quantity, x.unit_price, x.discount, x.tax_rate_bp, x.tax_amount,
-              x.subtotal, x.total, x.position
+              x.subtotal, x.total, x.position, x.hsn_sac, x.cgst, x.sgst, x.igst
        FROM unnest($2::bigint[], $3::text[], $4::int[], $5::bigint[], $6::bigint[], $7::int[], $8::bigint[], $9::bigint[],
-                   $10::bigint[], $11::int[])
-            AS x(product_id, description, quantity, unit_price, discount, tax_rate_bp, tax_amount, subtotal, total, position)`,
+                   $10::bigint[], $11::int[], $12::text[], $13::bigint[], $14::bigint[], $15::bigint[])
+            AS x(product_id, description, quantity, unit_price, discount, tax_rate_bp, tax_amount, subtotal, total,
+                 position, hsn_sac, cgst, sgst, igst)`,
       [
         invoiceId,
         lines.map((l) => l.productId),
@@ -181,16 +203,20 @@ export const invoicesRepository = {
         lines.map((l) => l.subtotal),
         lines.map((l) => l.total),
         lines.map((_, i) => i),
+        lines.map((l) => l.hsnSac),
+        lines.map((l) => l.cgst),
+        lines.map((l) => l.sgst),
+        lines.map((l) => l.igst),
       ],
     ),
 
   setStatus: (db: Db, id: number, status: InvoiceStatus) =>
     query(
       db,
-      `UPDATE invoices SET status = $2,
-              confirmed_at = CASE WHEN $2 = 'confirmed' THEN now() ELSE confirmed_at END,
-              cancelled_at = CASE WHEN $2 = 'cancelled' THEN now() ELSE cancelled_at END,
-              paid_at      = CASE WHEN $2 = 'paid' THEN now() ELSE paid_at END,
+      `UPDATE invoices SET status = $2::invoice_status,
+              confirmed_at = CASE WHEN $2::invoice_status = 'confirmed' THEN now() ELSE confirmed_at END,
+              cancelled_at = CASE WHEN $2::invoice_status = 'cancelled' THEN now() ELSE cancelled_at END,
+              paid_at      = CASE WHEN $2::invoice_status = 'paid' THEN now() ELSE paid_at END,
               updated_at = now()
        WHERE id = $1`,
       [id, status],

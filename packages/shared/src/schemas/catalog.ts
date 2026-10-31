@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PRODUCT_TYPES } from '../constants';
+import { hsnSacSchema } from './gst';
 import { basisPointsSchema, idSchema, moneySchema, optionalText, trimmed } from './common';
 
 export const taxSchema = z.object({
@@ -46,6 +47,7 @@ export const productSchema = z.object({
   costPrice: moneySchema,
   notes: optionalText(),
   taxId: idSchema.nullable().default(null),
+  hsnSac: hsnSacSchema,
   isActive: z.boolean().default(true),
   /** Attribute values this product is sold in; each becomes a variant. */
   variantValueIds: z.array(idSchema).max(50).default([]),

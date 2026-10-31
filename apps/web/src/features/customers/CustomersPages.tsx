@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { customerSchema } from '@brightloop/shared';
+import { customerSchema, INDIAN_STATES, stateName } from '@brightloop/shared';
 import { Button, ButtonLink } from '../../components/Button';
-import { TextArea, TextField } from '../../components/Field';
+import { TextArea, TextField, SelectField } from '../../components/Field';
 import { Money } from '../../components/Money';
 import { Facts, PageHeader, Panel, Toolbar } from '../../components/Page';
 import { SearchInput } from '../../components/SearchInput';
@@ -116,7 +116,15 @@ export function CustomerFormPage() {
     queryFn: () => api.get<Customer>(`/customers/${editing}`),
     enabled: !!editing,
   });
-  const [f, setF] = useState({ name: '', email: '', phone: '', company: '', address: '' });
+  const [f, setF] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    address: '',
+    gstin: '',
+    stateCode: '',
+  });
   useEffect(() => {
     const c = existing.data;
     if (c)
@@ -126,6 +134,8 @@ export function CustomerFormPage() {
         phone: c.phone ?? '',
         company: c.company ?? '',
         address: c.address ?? '',
+        gstin: c.gstin ?? '',
+        stateCode: c.stateCode ?? '',
       });
   }, [existing.data]);
   const { errors, pending, submit, formRef } = useFormSubmit(
@@ -205,6 +215,28 @@ export function CustomerFormPage() {
             value={f.address}
             error={errors.address}
             onChange={(e) => setF({ ...f, address: e.target.value })}
+          />
+          <SelectField
+            label="State"
+            hint="Decides CGST + SGST or IGST on their invoices"
+            value={f.stateCode}
+            error={errors.stateCode}
+            onChange={(e) => setF({ ...f, stateCode: e.target.value })}
+          >
+            <option value="">Choose a state</option>
+            {INDIAN_STATES.map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </SelectField>
+          <TextField
+            label="GSTIN"
+            hint="Leave empty if not registered"
+            autoCapitalize="characters"
+            value={f.gstin}
+            error={errors.gstin}
+            onChange={(e) => setF({ ...f, gstin: e.target.value.toUpperCase() })}
           />
           <div className="form-actions span-2">
             <ButtonLink to={editing ? `/customers/${editing}` : '/customers'}>Cancel</ButtonLink>
@@ -333,6 +365,17 @@ export function CustomerDetailPage() {
                 ],
                 ['Phone', c.phone ?? 'Not set'],
                 ['Address', c.address ?? 'Not set'],
+                ['State', stateName(c.stateCode) ?? 'Not set'],
+                [
+                  'GSTIN',
+                  c.gstin ? (
+                    <span key="g" className="fig">
+                      {c.gstin}
+                    </span>
+                  ) : (
+                    'Not registered'
+                  ),
+                ],
                 ['Customer since', formatDate(c.createdAt.slice(0, 10))],
               ]}
             />

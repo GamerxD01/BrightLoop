@@ -59,6 +59,7 @@ export interface Product {
   taxRateBp: number | null;
   isActive: boolean;
   variants: Variant[];
+  hsnSac: string | null;
 }
 export interface Plan {
   id: number;
@@ -78,6 +79,7 @@ export interface Plan {
   renewable: boolean;
   isActive: boolean;
   activeSubscriptions?: number;
+  hsnSac?: string | null;
 }
 export interface TemplateLine {
   id: number;
@@ -123,6 +125,8 @@ export interface Customer {
   activeSubscriptions?: number;
   outstanding?: number;
   hasPortalAccess?: boolean;
+  gstin: string | null;
+  stateCode: string | null;
 }
 
 export interface SubscriptionRow {
@@ -245,6 +249,13 @@ export interface Invoice {
   amountDue: number;
   isOverdue: boolean;
   sentAt: string | null;
+  gstMode: 'intra' | 'inter';
+  placeOfSupply: string | null;
+  customerGstin: string | null;
+  amountCgst: number;
+  amountSgst: number;
+  amountIgst: number;
+  seller: Seller | null;
   lines: {
     id: number;
     description: string;
@@ -255,6 +266,10 @@ export interface Invoice {
     taxAmount: number;
     subtotal: number;
     total: number;
+    hsnSac: string | null;
+    cgst: number;
+    sgst: number;
+    igst: number;
   }[];
   payments: InvoicePayment[];
   discounts: { name: string; amount: number }[];
@@ -320,4 +335,54 @@ export interface BillingStatus {
     finishedAt: string;
   } | null;
   due: { subscriptions: number; amount: number };
+}
+
+export interface Seller {
+  legalName: string;
+  brandName: string;
+  address: string | null;
+  stateCode: string | null;
+  stateName: string | null;
+  gstin: string | null;
+  email: string | null;
+  phone: string | null;
+  bank: { name: string | null; account: string | null; ifsc: string | null } | null;
+  upiId: string | null;
+  footer: string | null;
+}
+
+export interface Company {
+  brandName: string;
+  legalName: string;
+  addressLine: string | null;
+  city: string | null;
+  stateCode: string | null;
+  pincode: string | null;
+  gstin: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  bankName: string | null;
+  bankAccount: string | null;
+  bankIfsc: string | null;
+  upiId: string | null;
+  invoiceFooter: string | null;
+  hasLogo: boolean;
+  updatedAt: string;
+}
+
+export interface EmailLogRow {
+  id: number;
+  kind: string;
+  toAddress: string;
+  subject: string;
+  status: 'sent' | 'logged' | 'failed';
+  error: string | null;
+  entity: string | null;
+  entityId: number | null;
+  customerId: number | null;
+  attachments: string[];
+  createdAt: string;
+  bodyText?: string;
+  bodyHtml?: string | null;
 }

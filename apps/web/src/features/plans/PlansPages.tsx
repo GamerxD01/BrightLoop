@@ -124,6 +124,7 @@ export function PlanFormPage() {
     startDate: todayIso(),
     endDate: '',
     taxId: '',
+    hsnSac: '',
     autoClose: false,
     closable: true,
     pausable: false,
@@ -142,6 +143,7 @@ export function PlanFormPage() {
         startDate: p.startDate,
         endDate: p.endDate ?? '',
         taxId: p.taxId ? String(p.taxId) : '',
+        hsnSac: p.hsnSac ?? '',
         autoClose: p.autoClose,
         closable: p.closable,
         pausable: p.pausable,
@@ -246,6 +248,14 @@ export function PlanFormPage() {
                   </option>
                 ))}
               </SelectField>
+              <TextField
+                label="SAC code"
+                hint="Printed on GST invoices for the plan line"
+                inputMode="numeric"
+                value={f.hsnSac}
+                error={errors.hsnSac}
+                onChange={(e) => setF({ ...f, hsnSac: e.target.value })}
+              />
               <TextField
                 label="Available from"
                 type="date"

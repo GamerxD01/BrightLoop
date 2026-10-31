@@ -48,6 +48,12 @@ export const customersService = {
   ) {
     const existing = await customersRepository.findByEmail(db, input.email);
     if (existing) return existing;
-    return customersRepository.insert(db, { ...input, phone: null, address: null });
+    return customersRepository.insert(db, {
+      ...input,
+      phone: null,
+      address: null,
+      gstin: null,
+      stateCode: null,
+    });
   },
 };

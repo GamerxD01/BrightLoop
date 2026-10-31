@@ -9,6 +9,8 @@ export interface Customer {
   phone: string | null;
   company: string | null;
   address: string | null;
+  gstin: string | null;
+  stateCode: string | null;
   createdAt: string;
 }
 
@@ -58,17 +60,18 @@ export const customersRepository = {
   async insert(db: Db, c: CustomerInput) {
     return (await queryOne<Customer>(
       db,
-      `INSERT INTO customers (name, email, phone, company, address) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [c.name, c.email, c.phone, c.company, c.address],
+      `INSERT INTO customers (name, email, phone, company, address, gstin, state_code)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [c.name, c.email, c.phone, c.company, c.address, c.gstin, c.stateCode],
     ))!;
   },
 
   update(db: Db, id: number, c: CustomerInput) {
     return queryOne<Customer>(
       db,
-      `UPDATE customers SET name=$2, email=$3, phone=$4, company=$5, address=$6, updated_at=now()
+      `UPDATE customers SET name=$2, email=$3, phone=$4, company=$5, address=$6, gstin=$7, state_code=$8, updated_at=now()
        WHERE id = $1 RETURNING *`,
-      [id, c.name, c.email, c.phone, c.company, c.address],
+      [id, c.name, c.email, c.phone, c.company, c.address, c.gstin, c.stateCode],
     );
   },
 };

@@ -59,6 +59,7 @@ async function buildLines(db: Db, input: SubscriptionInput, plan: Plan): Promise
       unitPrice: plan.price,
       taxId: plan.taxId,
       taxRateBp: plan.taxRateBp ?? 0,
+      hsnSac: plan.hsnSac,
     },
   ];
 
@@ -84,6 +85,7 @@ async function buildLines(db: Db, input: SubscriptionInput, plan: Plan): Promise
       unitPrice: line.unitPrice ?? product.salesPrice + (variant?.extraPrice ?? 0),
       taxId: product.taxId,
       taxRateBp: product.taxRateBp ?? 0,
+      hsnSac: product.hsnSac,
     });
   });
 

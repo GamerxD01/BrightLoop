@@ -3,7 +3,6 @@ import { pool, withTransaction } from '../../db/pool';
 import { env } from '../../config/env';
 import { ConflictError, UnauthorizedError, BadRequestError } from '../../lib/errors';
 import { logger } from '../../lib/logger';
-import { sendMail } from '../../lib/mailer';
 import { audit } from '../../lib/audit';
 import {
   DUMMY_HASH,
@@ -13,6 +12,7 @@ import {
   signSession,
   verifyPassword,
 } from '../../lib/security';
+import { notifications } from '../notifications/notifications.service';
 import { customersService } from '../customers/customers.service';
 import { authRepository, type UserRecord } from './auth.repository';
 
@@ -67,6 +67,9 @@ export const authService = {
       });
       return created;
     });
+    notifications
+      .welcome(user.email, user.fullName, user.customerId!)
+      .catch((err) => logger.error({ err }, 'Welcome email failed'));
     return { user: toPublic(user), token: issueSession(user) };
   },
 
@@ -107,11 +110,7 @@ export const authService = {
 
     const link = `${env.APP_URL}/reset-password?token=${token}`;
     try {
-      await sendMail({
-        to: user.email,
-        subject: 'Reset your Brightloop password',
-        text: `Hi ${user.fullName},\n\nUse this link to choose a new password. It works once and expires in ${RESET_TTL_MINUTES} minutes:\n\n${link}\n\nIf you did not ask for this, you can ignore this email.`,
-      });
+      await notifications.passwordReset(user.email, user.fullName, link, RESET_TTL_MINUTES);
     } catch (err) {
       logger.error({ err, userId: user.id }, 'Could not send password reset email');
     }

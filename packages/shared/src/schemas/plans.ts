@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BILLING_PERIODS } from '../constants';
+import { hsnSacSchema } from './gst';
 import { idSchema, isoDateSchema, moneySchema, optionalText, trimmed } from './common';
 
 export const planSchema = z
@@ -12,6 +13,7 @@ export const planSchema = z
     startDate: isoDateSchema,
     endDate: isoDateSchema.nullable().default(null),
     taxId: idSchema.nullable().default(null),
+    hsnSac: hsnSacSchema,
     autoClose: z.boolean(),
     closable: z.boolean(),
     pausable: z.boolean(),

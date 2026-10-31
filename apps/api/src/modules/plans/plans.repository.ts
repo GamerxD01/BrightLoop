@@ -14,6 +14,7 @@ export interface Plan {
   taxId: number | null;
   taxName: string | null;
   taxRateBp: number | null;
+  hsnSac: string | null;
   autoClose: boolean;
   closable: boolean;
   pausable: boolean;
@@ -41,6 +42,7 @@ const values = (p: PlanInput) => [
   p.pausable,
   p.renewable,
   p.isActive,
+  p.hsnSac,
 ];
 
 export const plansRepository = {
@@ -62,8 +64,8 @@ export const plansRepository = {
     (await queryOne<{ id: number }>(
       db,
       `INSERT INTO plans (name, price, billing_period, billing_interval, min_quantity, start_date, end_date,
-                          tax_id, auto_close, closable, pausable, renewable, is_active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+                          tax_id, auto_close, closable, pausable, renewable, is_active, hsn_sac)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
       values(p),
     ))!,
 
@@ -71,7 +73,7 @@ export const plansRepository = {
     queryOne<{ id: number }>(
       db,
       `UPDATE plans SET name=$2, price=$3, billing_period=$4, billing_interval=$5, min_quantity=$6, start_date=$7,
-              end_date=$8, tax_id=$9, auto_close=$10, closable=$11, pausable=$12, renewable=$13, is_active=$14,
+              end_date=$8, tax_id=$9, auto_close=$10, closable=$11, pausable=$12, renewable=$13, is_active=$14, hsn_sac=$15,
               updated_at=now()
        WHERE id=$1 RETURNING id`,
       [id, ...values(p)],

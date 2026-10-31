@@ -12,6 +12,7 @@ export interface SubscriptionLine {
   unitPrice: number;
   taxId: number | null;
   taxRateBp: number;
+  hsnSac: string | null;
 }
 
 export type NewLine = Omit<SubscriptionLine, 'id'>;
@@ -88,7 +89,7 @@ const DETAIL_SELECT = `
          COALESCE((SELECT json_agg(json_build_object(
                      'id', l.id, 'kind', l.kind, 'productId', l.product_id, 'variantId', l.variant_id,
                      'description', l.description, 'quantity', l.quantity, 'unitPrice', l.unit_price,
-                     'taxId', l.tax_id, 'taxRateBp', l.tax_rate_bp) ORDER BY l.position, l.id)
+                     'taxId', l.tax_id, 'taxRateBp', l.tax_rate_bp, 'hsnSac', l.hsn_sac) ORDER BY l.position, l.id)
                    FROM subscription_lines l WHERE l.subscription_id = s.id), '[]') AS lines,
          COALESCE((SELECT array_agg(sd.discount_id ORDER BY sd.discount_id)
                    FROM subscription_discounts sd WHERE sd.subscription_id = s.id), '{}') AS discount_ids,
@@ -210,10 +211,10 @@ export const subscriptionsRepository = {
     await query(
       db,
       `INSERT INTO subscription_lines (subscription_id, kind, product_id, variant_id, description, quantity, unit_price,
-                                       tax_id, tax_rate_bp, position)
-       SELECT $1, x.kind, x.product_id, x.variant_id, x.description, x.quantity, x.unit_price, x.tax_id, x.tax_rate_bp, x.position
-       FROM unnest($2::line_kind[], $3::bigint[], $4::bigint[], $5::text[], $6::int[], $7::bigint[], $8::bigint[], $9::int[], $10::int[])
-            AS x(kind, product_id, variant_id, description, quantity, unit_price, tax_id, tax_rate_bp, position)`,
+                                       tax_id, tax_rate_bp, position, hsn_sac)
+       SELECT $1, x.kind, x.product_id, x.variant_id, x.description, x.quantity, x.unit_price, x.tax_id, x.tax_rate_bp, x.position, x.hsn_sac
+       FROM unnest($2::line_kind[], $3::bigint[], $4::bigint[], $5::text[], $6::int[], $7::bigint[], $8::bigint[], $9::int[], $10::int[], $11::text[])
+            AS x(kind, product_id, variant_id, description, quantity, unit_price, tax_id, tax_rate_bp, position, hsn_sac)`,
       [
         subscriptionId,
         lines.map((l) => l.kind),
@@ -225,6 +226,7 @@ export const subscriptionsRepository = {
         lines.map((l) => l.taxId),
         lines.map((l) => l.taxRateBp),
         lines.map((_, i) => i),
+        lines.map((l) => l.hsnSac ?? null),
       ],
     );
   },

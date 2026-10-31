@@ -1,24 +1,25 @@
 import {
-  LABELS,
   addDays,
   addPeriod,
-  formatMoney,
   invoiceActionBlocker,
   priceLines,
+  gstMode,
+  splitGst,
+  type DiscountRule,
   type BillingPeriod,
   type InvoiceAction,
   type InvoiceListQuery,
 } from '@brightloop/shared';
-import { env } from '../../config/env';
 import { pool, queryOne, withTransaction, type Db } from '../../db/pool';
 import { audit } from '../../lib/audit';
 import { NotFoundError, RuleError } from '../../lib/errors';
 import { events } from '../../lib/events';
 import type { Actor } from '../../lib/http';
-import { logger } from '../../lib/logger';
-import { sendMail } from '../../lib/mailer';
 import { paginated } from '../../lib/pagination';
 import { nextNumber } from '../../lib/sequence';
+import { companyService } from '../company/company.service';
+import { notifications } from '../notifications/notifications.service';
+import { renderInvoicePdf } from './invoice-pdf';
 import { discountsRepository } from '../discounts/discounts.repository';
 import type { SubscriptionLine } from '../subscriptions/subscriptions.repository';
 import { invoicesRepository as repo, type InvoiceDetail } from './invoices.repository';
@@ -89,30 +90,82 @@ export const invoicesService = {
         )
       : [];
 
-    const priced = priceLines(
-      sub.lines.map((l) => ({
-        key: String(l.id),
-        productId: l.productId,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-        taxRateBp: l.taxRateBp,
-      })),
-      rules,
-      periodStart,
-    );
-
-    const inserted = await repo.insert(tx, {
-      number: await nextNumber(tx, 'INV', new Date(`${periodStart}T00:00:00Z`)),
+    const created = await this.createInvoice(tx, {
       subscriptionId: sub.id,
       customerId: sub.customerId,
       periodStart,
       periodEnd,
       invoiceDate: periodStart,
-      dueDate: addDays(periodStart, sub.dueDays),
+      dueDays: sub.dueDays,
+      lines: sub.lines,
+      rules,
+    });
+    return created ? { id: created.id, periodEnd, nextStart } : null;
+  },
+
+  /**
+   * The one place an invoice is written: number, prices, discounts, the GST
+   * split for the customer's state, and the seller's details as of today.
+   * Discount uses are taken inside the same transaction.
+   */
+  async createInvoice(
+    tx: Db,
+    input: {
+      subscriptionId: number | null;
+      customerId: number;
+      periodStart: string;
+      periodEnd: string;
+      invoiceDate: string;
+      dueDays: number;
+      lines: Pick<
+        SubscriptionLine,
+        'productId' | 'description' | 'quantity' | 'unitPrice' | 'taxRateBp' | 'hsnSac'
+      >[];
+      rules: DiscountRule[];
+    },
+  ): Promise<{ id: number; total: number } | null> {
+    const priced = priceLines(
+      input.lines.map((l, i) => ({
+        key: String(i),
+        productId: l.productId,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        taxRateBp: l.taxRateBp,
+      })),
+      input.rules,
+      input.periodStart,
+    );
+
+    const seller = await companyService.snapshot(tx);
+    const buyer = await queryOne<{ gstin: string | null; stateCode: string | null }>(
+      tx,
+      'SELECT gstin, state_code FROM customers WHERE id = $1',
+      [input.customerId],
+    );
+    const placeOfSupply = buyer?.stateCode ?? seller.stateCode;
+    const mode = gstMode(seller.stateCode, placeOfSupply);
+    const lineTax = priced.lines.map((l) => splitGst(l.tax, mode));
+    const sum = (k: 'cgst' | 'sgst' | 'igst') => lineTax.reduce((a, t) => a + t[k], 0);
+
+    const inserted = await repo.insert(tx, {
+      number: await nextNumber(tx, 'INV', new Date(`${input.invoiceDate}T00:00:00Z`)),
+      subscriptionId: input.subscriptionId,
+      customerId: input.customerId,
+      periodStart: input.periodStart,
+      periodEnd: input.periodEnd,
+      invoiceDate: input.invoiceDate,
+      dueDate: addDays(input.invoiceDate, input.dueDays),
       amountUntaxed: priced.untaxed,
       amountDiscount: priced.discount,
       amountTax: priced.tax,
       amountTotal: priced.total,
+      gstMode: mode,
+      placeOfSupply,
+      customerGstin: buyer?.gstin ?? null,
+      amountCgst: sum('cgst'),
+      amountSgst: sum('sgst'),
+      amountIgst: sum('igst'),
+      seller,
     });
     if (!inserted) return null;
 
@@ -121,7 +174,7 @@ export const invoicesService = {
       inserted.id,
       priced.lines.map((l, i) => ({
         productId: l.productId,
-        description: sub.lines[i]!.description,
+        description: input.lines[i]!.description,
         quantity: l.quantity,
         unitPrice: l.unitPrice,
         discount: l.discount,
@@ -129,9 +182,12 @@ export const invoicesService = {
         taxAmount: l.tax,
         subtotal: l.subtotal,
         total: l.total,
+        hsnSac: input.lines[i]!.hsnSac ?? null,
+        ...lineTax[i]!,
       })),
     );
     for (const applied of priced.applied) {
+      if (applied.discountId < 0) continue; // a customer credit, not a discount rule
       const ok = await discountsRepository.consumeUse(
         tx,
         applied.discountId,
@@ -141,7 +197,7 @@ export const invoicesService = {
       if (!ok)
         throw new RuleError(`Discount "${applied.name}" ran out while billing; please re-run`);
     }
-    return { id: inserted.id, periodEnd, nextStart };
+    return { id: inserted.id, total: priced.total };
   },
 
   async act(id: number, action: InvoiceAction, actor: Actor) {
@@ -174,20 +230,19 @@ export const invoicesService = {
   },
 
   async email(id: number) {
-    const inv = await this.get(id);
-    const lines = inv.lines
-      .map((l) => `  ${l.description} × ${l.quantity}  ${formatMoney(l.total)}`)
-      .join('\n');
-    try {
-      await sendMail({
-        to: inv.customerEmail,
-        subject: `Invoice ${inv.number} from Brightloop — ${formatMoney(inv.amountDue)} due ${inv.dueDate}`,
-        text: `Hello ${inv.customerName},\n\nInvoice ${inv.number} (${LABELS.invoiceStatus[inv.status]}) for ${inv.periodStart} to ${inv.periodEnd}:\n\n${lines}\n\nTotal: ${formatMoney(inv.amountTotal)}\nPaid: ${formatMoney(inv.amountPaid)}\nDue by ${inv.dueDate}: ${formatMoney(inv.amountDue)}\n\nView it any time: ${env.APP_URL}/portal/invoices/${inv.id}\n`,
-      });
-    } catch (err) {
-      logger.error({ err, invoiceId: id }, 'Invoice email failed');
+    const result = await notifications.invoice(await this.get(id));
+    if (result.status === 'failed') {
       throw new RuleError('The invoice was marked sent but the email could not be delivered');
     }
+  },
+
+  async pdf(id: number, scope?: Actor) {
+    const inv = await this.get(id, scope);
+    if (scope?.role === 'customer' && inv.status === 'draft') throw new NotFoundError('Invoice');
+    return {
+      filename: `${inv.number.replace(/\//g, '-')}.pdf`,
+      content: await renderInvoicePdf(inv),
+    };
   },
 
   async confirmMany(ids: number[]) {

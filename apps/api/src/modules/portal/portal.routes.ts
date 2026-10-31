@@ -7,6 +7,7 @@ import {
 import { actorOf, idParam } from '../../lib/http';
 import { getQuery, validate } from '../../middleware/validate';
 import { portalService as s } from './portal.service';
+import { invoicesController } from '../invoices/invoices.controller';
 
 /** Mounted behind authenticate + customerOnly. */
 export const portalRoutes = Router()
@@ -34,6 +35,7 @@ export const portalRoutes = Router()
       res.json(await s.listInvoices(getQuery(req, invoiceListQuerySchema), actorOf(req)));
     },
   )
+  .get('/invoices/:id/pdf', invoicesController.pdf)
   .get('/invoices/:id', async (req: Request, res: Response) => {
     res.json({ data: await s.getInvoice(idParam(req), actorOf(req)) });
   });

@@ -12,6 +12,8 @@ import { events } from '../../lib/events';
 import type { Actor } from '../../lib/http';
 import { paginated } from '../../lib/pagination';
 import { invoicesRepository } from '../invoices/invoices.repository';
+import { logger } from '../../lib/logger';
+import { notifications } from '../notifications/notifications.service';
 import { invoicesService } from '../invoices/invoices.service';
 import { paymentsRepository } from './payments.repository';
 
@@ -57,6 +59,10 @@ export const paymentsService = {
     });
 
     const fresh = await invoicesService.get(invoice.id);
+    // A receipt is a courtesy: a mail problem never undoes a recorded payment.
+    notifications
+      .receipt(fresh, input.amount, input.method, input.paidOn)
+      .catch((err) => logger.error({ err, invoiceId: invoice.id }, 'Receipt email failed'));
     events.publish({
       type: 'payment.recorded',
       data: { invoiceId: invoice.id, amount: input.amount },

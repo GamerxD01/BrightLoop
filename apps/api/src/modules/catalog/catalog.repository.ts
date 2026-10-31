@@ -48,6 +48,7 @@ export interface Product {
   taxId: number | null;
   taxName: string | null;
   taxRateBp: number | null;
+  hsnSac: string | null;
   isActive: boolean;
   variants: Variant[];
   createdAt: string;
@@ -155,17 +156,17 @@ export const catalogRepository = {
   insertProduct: async (db: Db, p: ProductInput) =>
     (await queryOne<{ id: number }>(
       db,
-      `INSERT INTO products (name, type, sales_price, cost_price, notes, tax_id, is_active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [p.name, p.type, p.salesPrice, p.costPrice, p.notes, p.taxId, p.isActive],
+      `INSERT INTO products (name, type, sales_price, cost_price, notes, tax_id, is_active, hsn_sac)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [p.name, p.type, p.salesPrice, p.costPrice, p.notes, p.taxId, p.isActive, p.hsnSac],
     ))!,
 
   updateProduct: (db: Db, id: number, p: ProductInput) =>
     queryOne<{ id: number }>(
       db,
       `UPDATE products SET name=$2, type=$3, sales_price=$4, cost_price=$5, notes=$6, tax_id=$7, is_active=$8,
-              updated_at=now() WHERE id=$1 RETURNING id`,
-      [id, p.name, p.type, p.salesPrice, p.costPrice, p.notes, p.taxId, p.isActive],
+              hsn_sac=$9, updated_at=now() WHERE id=$1 RETURNING id`,
+      [id, p.name, p.type, p.salesPrice, p.costPrice, p.notes, p.taxId, p.isActive, p.hsnSac],
     ),
 
   /**
