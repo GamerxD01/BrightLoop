@@ -260,6 +260,21 @@ export function CustomerDetailPage() {
     queryKey: ['subscriptions', { customerId: id }],
     queryFn: () => api.list<SubscriptionRow>('/subscriptions', { customerId: id, pageSize: 50 }),
   });
+  const credits = useQuery({
+    queryKey: ['credits', id],
+    queryFn: () =>
+      api.get<{
+        balance: number;
+        history: {
+          id: number;
+          amount: number;
+          reason: string;
+          invoiceId: number | null;
+          invoiceNumber: string | null;
+          createdAt: string;
+        }[];
+      }>(`/customers/${id}/credits`),
+  });
   const invoices = useQuery({
     queryKey: ['invoices', { customerId: id }],
     queryFn: () => api.list<InvoiceRow>('/invoices', { customerId: id, pageSize: 50 }),
@@ -379,6 +394,39 @@ export function CustomerDetailPage() {
                 ['Customer since', formatDate(c.createdAt.slice(0, 10))],
               ]}
             />
+          </Panel>
+          <Panel title="Account credit">
+            {!credits.data ? null : (
+              <>
+                <p className="credit-balance">
+                  <Money value={credits.data.balance} />
+                  <span className="muted"> available, used on the next invoice</span>
+                </p>
+                {credits.data.history.length > 0 && (
+                  <table className="table table--compact">
+                    <caption className="visually-hidden">Credit history</caption>
+                    <tbody>
+                      {credits.data.history.map((h) => (
+                        <tr key={h.id}>
+                          <td>
+                            {h.invoiceId ? (
+                              <Link to={`/invoices/${h.invoiceId}`}>{h.reason}</Link>
+                            ) : (
+                              h.reason
+                            )}
+                            <span className="cell-sub">{formatDate(h.createdAt.slice(0, 10))}</span>
+                          </td>
+                          <td className={`num ${h.amount < 0 ? 'muted' : ''}`}>
+                            {h.amount < 0 ? '−' : '+'}
+                            <Money value={Math.abs(h.amount)} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </>
+            )}
           </Panel>
         </aside>
       </div>

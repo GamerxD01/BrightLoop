@@ -63,7 +63,9 @@ export function InvoiceSheet({ invoice: inv }: { invoice: Invoice }) {
           )}
         </div>
         <div className="sheet__doc">
-          <p className="sheet__kind">Tax invoice</p>
+          <p className="sheet__kind">
+            {inv.kind === 'adjustment' ? 'Tax invoice, mid-period change' : 'Tax invoice'}
+          </p>
           <p className="fig sheet__muted">{inv.number}</p>
           <InvoiceStatusTag status={inv.status} overdue={inv.isOverdue} />
         </div>

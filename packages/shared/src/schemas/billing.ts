@@ -3,6 +3,7 @@ import {
   DISCOUNT_SCOPES,
   DISCOUNT_TYPES,
   INVOICE_STATUSES,
+  ALL_PAYMENT_METHODS,
   PAYMENT_METHODS,
   SUBSCRIPTION_STATUSES,
 } from '../constants';
@@ -112,6 +113,22 @@ export const fromTemplateSchema = z.object({
   startDate: isoDateSchema,
 });
 
+/** A mid-period change to an active subscription: seats and the full set of add-ons wanted. */
+export const subscriptionChangeSchema = z.object({
+  planQuantity: z.number().int().min(1, 'At least 1').max(100_000),
+  lines: z
+    .array(
+      z.object({
+        productId: idSchema,
+        variantId: idSchema.nullable().default(null),
+        quantity: z.number().int().min(1, 'At least 1').max(100_000),
+      }),
+    )
+    .max(100)
+    .default([]),
+});
+export type SubscriptionChangeInput = z.infer<typeof subscriptionChangeSchema>;
+
 export const subscriptionActionSchema = z.object({
   action: z.enum(SUBSCRIPTION_ACTIONS),
   note: optionalText(500),
@@ -151,7 +168,7 @@ export const paymentSchema = z.object({
 export type PaymentInput = z.infer<typeof paymentSchema>;
 
 export const paymentListQuerySchema = listQuerySchema.extend({
-  method: z.enum(PAYMENT_METHODS).optional(),
+  method: z.enum(ALL_PAYMENT_METHODS).optional(),
   from: isoDateSchema.optional(),
   to: isoDateSchema.optional(),
 });

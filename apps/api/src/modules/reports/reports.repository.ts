@@ -30,7 +30,7 @@ export const reportsRepository = {
            WHERE i.status IN ('confirmed', 'paid') AND i.invoice_date BETWEEN $1 AND $2 AND ($3::bigint IS NULL OR s.plan_id = $3)) AS invoiced,
          (SELECT COALESCE(sum(pm.amount), 0) FROM payments pm JOIN invoices i ON i.id = pm.invoice_id
            LEFT JOIN subscriptions s ON s.id = i.subscription_id
-           WHERE pm.paid_on BETWEEN $1 AND $2 AND ($3::bigint IS NULL OR s.plan_id = $3)) AS collected,
+           WHERE pm.method <> 'credit' AND pm.paid_on BETWEEN $1 AND $2 AND ($3::bigint IS NULL OR s.plan_id = $3)) AS collected,
          (SELECT COALESCE(sum(i.amount_total - i.amount_paid), 0) FROM invoices i LEFT JOIN subscriptions s ON s.id = i.subscription_id
            WHERE i.status = 'confirmed' AND ($3::bigint IS NULL OR s.plan_id = $3)) AS outstanding,
          (SELECT count(*) FROM invoices i LEFT JOIN subscriptions s ON s.id = i.subscription_id
@@ -55,7 +55,7 @@ export const reportsRepository = {
        pay AS (
          SELECT date_trunc('month', pm.paid_on)::date AS month, sum(pm.amount) AS total
          FROM payments pm JOIN invoices i ON i.id = pm.invoice_id LEFT JOIN subscriptions s ON s.id = i.subscription_id
-         WHERE pm.paid_on >= date_trunc('month', $1::date) AND pm.paid_on <= $2 AND ($3::bigint IS NULL OR s.plan_id = $3)
+         WHERE pm.method <> 'credit' AND pm.paid_on >= date_trunc('month', $1::date) AND pm.paid_on <= $2 AND ($3::bigint IS NULL OR s.plan_id = $3)
          GROUP BY 1)
        SELECT to_char(m.month, 'YYYY-MM') AS month, COALESCE(inv.total, 0) AS invoiced, COALESCE(pay.total, 0) AS collected
        FROM months m LEFT JOIN inv ON inv.month = m.month LEFT JOIN pay ON pay.month = m.month

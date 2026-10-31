@@ -2,6 +2,7 @@ export * from './constants';
 export * from './money';
 export * from './dates';
 export * from './pricing';
+export * from './proration';
 export * from './workflow';
 export * from './schemas';
 export * from './gst';

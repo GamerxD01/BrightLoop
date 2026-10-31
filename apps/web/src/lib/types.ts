@@ -229,6 +229,7 @@ export interface Invoice {
   id: number;
   number: string;
   status: InvoiceStatus;
+  kind: 'recurring' | 'adjustment';
   subscriptionId: number | null;
   subscriptionNumber: string | null;
   planName: string | null;

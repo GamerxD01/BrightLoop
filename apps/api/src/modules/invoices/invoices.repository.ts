@@ -1,4 +1,4 @@
-import type { InvoiceListQuery, InvoiceStatus } from '@brightloop/shared';
+import type { InvoiceListQuery, InvoiceKind, InvoiceStatus } from '@brightloop/shared';
 import { query, queryOne, type Db } from '../../db/pool';
 import { SqlFilter, orderBy } from '../../lib/pagination';
 import type { SellerSnapshot } from '../company/company.service';
@@ -26,6 +26,7 @@ export interface InvoiceHeader {
   amountSgst: number;
   amountIgst: number;
   seller: SellerSnapshot | null;
+  kind: InvoiceKind;
 }
 
 export interface InvoiceLineRow {
@@ -154,9 +155,9 @@ export const invoicesRepository = {
       db,
       `INSERT INTO invoices (number, subscription_id, customer_id, period_start, period_end, invoice_date, due_date,
                              amount_untaxed, amount_discount, amount_tax, amount_total, gst_mode, place_of_supply,
-                             customer_gstin, amount_cgst, amount_sgst, amount_igst, seller)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-       ON CONFLICT (subscription_id, period_start) WHERE status <> 'cancelled' DO NOTHING
+                             customer_gstin, amount_cgst, amount_sgst, amount_igst, seller, kind)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+       ON CONFLICT (subscription_id, period_start) WHERE status <> 'cancelled' AND kind = 'recurring' DO NOTHING
        RETURNING id`,
       [
         i.number,
@@ -177,6 +178,7 @@ export const invoicesRepository = {
         i.amountSgst,
         i.amountIgst,
         i.seller ? JSON.stringify(i.seller) : null,
+        i.kind,
       ],
     ),
 

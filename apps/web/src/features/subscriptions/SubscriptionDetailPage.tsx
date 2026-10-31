@@ -21,6 +21,7 @@ import { useToast } from '../../components/Toast';
 import { ApiError, api } from '../../lib/api';
 import { formatDate, formatPeriod } from '../../lib/format';
 import { useLookups } from '../../lib/queries';
+import { ChangePanel } from './ChangePanel';
 import type { InvoiceRow, Subscription } from '../../lib/types';
 
 /** The step that moves the deal forward is the one filled button. */
@@ -37,7 +38,7 @@ export function SubscriptionActions({ sub, basePath }: { sub: Subscription; base
   const [confirming, setConfirming] = useState(false);
   const isPortal = basePath.startsWith('/portal');
   const actions = availableSubscriptionActions(sub.status, sub).filter(
-    (a) => !isPortal || ['pause', 'resume', 'close', 'renew'].includes(a),
+    (a) => !isPortal || ['confirm', 'pause', 'resume', 'close', 'renew'].includes(a),
   );
 
   const act = useMutation({
@@ -103,7 +104,7 @@ export function SubscriptionActions({ sub, basePath }: { sub: Subscription; base
           pending={act.isPending && act.variables === forward}
           onClick={() => act.mutate(forward)}
         >
-          {LABEL[forward]}
+          {isPortal && forward === 'confirm' ? 'Accept quotation' : LABEL[forward]}
         </Button>
       )}
       <ConfirmDialog
@@ -231,6 +232,13 @@ export function SubscriptionDetailPage() {
           <Panel title="Lines">
             <SubscriptionLines sub={s} />
           </Panel>
+          {s.status === 'active' && lookups.data && (
+            <ChangePanel
+              sub={s}
+              addons={lookups.data.products.filter((p) => p.isActive)}
+              portal={false}
+            />
+          )}
           <Panel
             title="Invoices"
             actions={<Link to={`/invoices?subscriptionId=${s.id}`}>Open in invoices</Link>}

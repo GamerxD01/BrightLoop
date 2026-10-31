@@ -25,8 +25,14 @@ export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 export const INVOICE_STATUSES = ['draft', 'confirmed', 'paid', 'cancelled'] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
+/** Methods staff record by hand. */
 export const PAYMENT_METHODS = ['bank_transfer', 'upi', 'card', 'cash', 'cheque'] as const;
-export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+/** Every method a payment row can carry; 'credit' is account credit spent by the system. */
+export const ALL_PAYMENT_METHODS = [...PAYMENT_METHODS, 'credit'] as const;
+export type PaymentMethod = (typeof ALL_PAYMENT_METHODS)[number];
+
+export const INVOICE_KINDS = ['recurring', 'adjustment'] as const;
+export type InvoiceKind = (typeof INVOICE_KINDS)[number];
 
 export const DISCOUNT_TYPES = ['fixed', 'percentage'] as const;
 export type DiscountType = (typeof DISCOUNT_TYPES)[number];
@@ -46,6 +52,7 @@ export const LABELS = {
     card: 'Card',
     cash: 'Cash',
     cheque: 'Cheque',
+    credit: 'Account credit',
   },
   subscriptionStatus: {
     draft: 'Draft',

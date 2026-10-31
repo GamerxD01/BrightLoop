@@ -8,6 +8,7 @@ import {
   type DiscountRule,
   type BillingPeriod,
   type InvoiceAction,
+  type InvoiceKind,
   type InvoiceListQuery,
 } from '@brightloop/shared';
 import { pool, queryOne, withTransaction, type Db } from '../../db/pool';
@@ -18,6 +19,7 @@ import type { Actor } from '../../lib/http';
 import { paginated } from '../../lib/pagination';
 import { nextNumber } from '../../lib/sequence';
 import { companyService } from '../company/company.service';
+import { creditsService } from '../credits/credits.service';
 import { notifications } from '../notifications/notifications.service';
 import { renderInvoicePdf } from './invoice-pdf';
 import { discountsRepository } from '../discounts/discounts.repository';
@@ -71,7 +73,7 @@ export const invoicesService = {
 
     const already = await queryOne(
       tx,
-      `SELECT 1 FROM invoices WHERE subscription_id = $1 AND period_start = $2 AND status <> 'cancelled'`,
+      `SELECT 1 FROM invoices WHERE subscription_id = $1 AND period_start = $2 AND status <> 'cancelled' AND kind = 'recurring'`,
       [sub.id, periodStart],
     );
     if (already) return null;
@@ -122,6 +124,7 @@ export const invoicesService = {
         'productId' | 'description' | 'quantity' | 'unitPrice' | 'taxRateBp' | 'hsnSac'
       >[];
       rules: DiscountRule[];
+      kind?: InvoiceKind;
     },
   ): Promise<{ id: number; total: number } | null> {
     const priced = priceLines(
@@ -166,6 +169,7 @@ export const invoicesService = {
       amountSgst: sum('sgst'),
       amountIgst: sum('igst'),
       seller,
+      kind: input.kind ?? 'recurring',
     });
     if (!inserted) return null;
 
@@ -207,7 +211,10 @@ export const invoicesService = {
       const blocker = invoiceActionBlocker(action, invoice.status, invoice.amountPaid);
       if (blocker) throw new RuleError(blocker);
 
-      if (action === 'confirm') await repo.setStatus(tx, id, 'confirmed');
+      if (action === 'confirm') {
+        await repo.setStatus(tx, id, 'confirmed');
+        await creditsService.applyToInvoice(tx, id, actor.userId);
+      }
       if (action === 'cancel') {
         await repo.setStatus(tx, id, 'cancelled');
         await discountsRepository.releaseUses(tx, id);
@@ -245,8 +252,13 @@ export const invoicesService = {
     };
   },
 
+  /** Bulk confirm after a billing run; any account credit is spent on each invoice as it is confirmed. */
   async confirmMany(ids: number[]) {
-    const rows = await repo.confirmDrafts(pool, ids);
+    const rows = await withTransaction(async (tx) => {
+      const confirmed = await repo.confirmDrafts(tx, ids);
+      for (const r of confirmed) await creditsService.applyToInvoice(tx, r.id, null);
+      return confirmed;
+    });
     for (const r of rows) publish(r.id, r.customerId, 'confirmed');
     return rows.length;
   },

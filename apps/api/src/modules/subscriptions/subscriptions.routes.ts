@@ -6,6 +6,7 @@ import {
   subscriptionSchema,
 } from '@brightloop/shared';
 import { validate } from '../../middleware/validate';
+import { changesRoutes } from '../changes/changes.routes';
 import { subscriptionsController as c } from './subscriptions.controller';
 
 export const subscriptionsRoutes = Router()
@@ -15,4 +16,5 @@ export const subscriptionsRoutes = Router()
   .get('/:id', c.get)
   .post('/', validate(subscriptionSchema), c.create)
   .put('/:id', validate(subscriptionSchema), c.update)
-  .post('/:id/actions', validate(subscriptionActionSchema), c.transition);
+  .post('/:id/actions', validate(subscriptionActionSchema), c.transition)
+  .use('/:id/changes', changesRoutes);

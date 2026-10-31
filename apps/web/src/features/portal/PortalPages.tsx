@@ -11,6 +11,7 @@ import { useUser } from '../../lib/auth';
 import { formatDate, formatMoney, formatPeriod } from '../../lib/format';
 import type { InvoiceRow, Subscription, SubscriptionRow } from '../../lib/types';
 import { useUrlState } from '../../lib/url-state';
+import { ChangePanel, type AddonOption } from '../subscriptions/ChangePanel';
 import { SubscriptionActions, SubscriptionLines } from '../subscriptions/SubscriptionDetailPage';
 
 export function PortalHomePage() {
@@ -30,6 +31,10 @@ export function PortalHomePage() {
         dir: 'asc',
       }),
   });
+  const credits = useQuery({
+    queryKey: ['credits', 'mine'],
+    queryFn: () => api.get<{ balance: number }>('/portal/credits'),
+  });
   const owed = open.data?.data.reduce((s, i) => s + i.amountTotal - i.amountPaid, 0) ?? 0;
   const visible = subs.data
     ? { ...subs.data, data: subs.data.data.filter((s) => s.status !== 'draft') }
@@ -47,6 +52,14 @@ export function PortalHomePage() {
             : undefined
         }
       />
+      {(credits.data?.balance ?? 0) > 0 && (
+        <div className="callout">
+          <p>
+            You have <span className="fig">{formatMoney(credits.data!.balance)}</span> of account
+            credit. It is used automatically on your next invoice.
+          </p>
+        </div>
+      )}
       <Panel title="Your subscriptions">
         <DataTable
           caption="Your subscriptions"
@@ -195,6 +208,11 @@ export function PortalSubscriptionPage() {
     queryKey: ['portal', 'subscription', id],
     queryFn: () => api.get<Subscription>(`/portal/subscriptions/${id}`),
   });
+  const addons = useQuery({
+    queryKey: ['portal', 'addons'],
+    queryFn: () => api.get<AddonOption[]>('/portal/addons'),
+    staleTime: 60_000,
+  });
   if (sub.isError) return <ErrorState error={sub.error} onRetry={() => void sub.refetch()} />;
   if (!sub.data) return <SkeletonBlock />;
   const s = sub.data;
@@ -212,9 +230,21 @@ export function PortalSubscriptionPage() {
       />
       <div className="detail">
         <div className="detail__main">
+          {s.status === 'quotation' && (
+            <div className="callout">
+              <p>
+                This is a quotation
+                {s.quoteValidUntil ? `, valid until ${formatDate(s.quoteValidUntil)}` : ''}. Review
+                the lines below and accept it to start.
+              </p>
+            </div>
+          )}
           <Panel title="What you pay for">
             <SubscriptionLines sub={s} />
           </Panel>
+          {s.status === 'active' && addons.data && (
+            <ChangePanel sub={s} addons={addons.data} portal />
+          )}
         </div>
         <aside className="detail__side">
           <Panel title="Details">

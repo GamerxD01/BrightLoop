@@ -1,3 +1,4 @@
+import { todayIso } from '@brightloop/shared';
 import type {
   InvoiceListQuery,
   SubscriptionAction,
@@ -8,8 +9,8 @@ import type { Actor } from '../../lib/http';
 import { invoicesService } from '../invoices/invoices.service';
 import { subscriptionsService } from '../subscriptions/subscriptions.service';
 
-/** What a customer may do to their own subscription from the portal. */
-const SELF_SERVICE: SubscriptionAction[] = ['pause', 'resume', 'close', 'renew'];
+/** What a customer may do to their own subscription from the portal; "confirm" is accepting a quotation. */
+const SELF_SERVICE: SubscriptionAction[] = ['confirm', 'pause', 'resume', 'close', 'renew'];
 
 /**
  * The portal reuses the back-office services but pins every query to the
@@ -31,7 +32,20 @@ export const portalService = {
   async act(id: number, action: SubscriptionAction, actor: Actor) {
     if (!SELF_SERVICE.includes(action))
       throw new ForbiddenError('Please contact us to make this change');
-    await this.getSubscription(id, actor);
+    const sub = await this.getSubscription(id, actor);
+    if (action === 'confirm') {
+      // Accepting a quote: confirm it, and start it at once if its start date has come.
+      const confirmed = await subscriptionsService.transition(
+        id,
+        'confirm',
+        'Quotation accepted by the customer',
+        actor,
+      );
+      if (sub.startDate <= todayIso()) {
+        return subscriptionsService.transition(id, 'activate', 'Started on acceptance', actor);
+      }
+      return confirmed;
+    }
     return subscriptionsService.transition(
       id,
       action,

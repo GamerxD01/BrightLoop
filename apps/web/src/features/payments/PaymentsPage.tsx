@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { LABELS, PAYMENT_METHODS } from '@brightloop/shared';
+import { ALL_PAYMENT_METHODS, LABELS } from '@brightloop/shared';
 import { Money } from '../../components/Money';
 import { PageHeader, Toolbar } from '../../components/Page';
 import { SearchInput } from '../../components/SearchInput';
@@ -60,7 +60,7 @@ export function PaymentsPage() {
           onChange={(e) => set({ method: e.target.value })}
         >
           <option value="">All methods</option>
-          {PAYMENT_METHODS.map((m) => (
+          {ALL_PAYMENT_METHODS.map((m) => (
             <option key={m} value={m}>
               {LABELS.paymentMethod[m]}
             </option>
