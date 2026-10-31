@@ -13,7 +13,7 @@ Products and variants, plans, quotations, subscriptions with a guarded lifecycle
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791?logo=postgresql&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-78%20passing-2ea44f)
 
-[▶ Watch the 6-minute walkthrough](docs/brightloop-walkthrough-full.mp4) · [Run it](#run-it) · [Demo script](docs/DEMO.md) · [Architecture](#architecture) · [Database](#database)
+[▶ Watch the 6-minute walkthrough](https://www.youtube.com/watch?v=c3XWUp_rrp4) · [Run it](#run-it) · [Demo script](docs/DEMO.md) · [Architecture](#architecture) · [Database](#database)
 
 <img src="docs/screenshots/dashboard.jpg" alt="The finance dashboard: active subscriptions, recurring revenue, collected, outstanding and overdue, revenue by month and the overdue list" width="100%">
 
