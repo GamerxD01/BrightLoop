@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { attributeSchema, formatPercent, paymentTermSchema, taxSchema } from '@brightloop/shared';
 import { Button } from '../../components/Button';
-import { MoneyField, TextField } from '../../components/Field';
+import { Checkbox, MoneyField, TextField } from '../../components/Field';
 import { PageHeader, Panel } from '../../components/Page';
 import { ActiveTag } from '../../components/Status';
 import { DataTable, EmptyState } from '../../components/Table';
@@ -12,17 +12,25 @@ import { formatMoney } from '../../lib/format';
 import { rupeesToPaise, toInt, useFormSubmit } from '../../lib/forms';
 import type { Attribute, PaymentTerm, Tax } from '../../lib/types';
 
-function AddTax() {
+/** Adds a tax, or edits one when `tax` is given (rename, change the rate, archive). */
+function TaxForm({ tax, onDone }: { tax?: Tax | null; onDone: () => void }) {
   const qc = useQueryClient();
-  const [f, setF] = useState({ name: '', rate: '' });
+  const blank = { name: '', rate: '', isActive: true };
+  const [f, setF] = useState(
+    tax ? { name: tax.name, rate: String(tax.rateBp / 100), isActive: tax.isActive } : blank,
+  );
   const { errors, pending, submit, formRef } = useFormSubmit(
     taxSchema,
-    (d) => api.post<Tax>('/catalog/taxes', d),
+    (d) => (tax ? api.put<Tax>(`/catalog/taxes/${tax.id}`, d) : api.post<Tax>('/catalog/taxes', d)),
     {
-      success: 'Tax added',
+      success: tax
+        ? 'Tax updated. Issued invoices keep the rate they were billed at.'
+        : 'Tax added',
       onDone: () => {
-        setF({ name: '', rate: '' });
+        setF(blank);
         void qc.invalidateQueries({ queryKey: ['taxes'] });
+        void qc.invalidateQueries({ queryKey: ['lookups'] });
+        onDone();
       },
     },
   );
@@ -36,7 +44,7 @@ function AddTax() {
         void submit({
           name: f.name,
           rateBp: f.rate.trim() ? Math.round(Number(f.rate) * 100) : Number.NaN,
-          isActive: true,
+          isActive: f.isActive,
         });
       }}
     >
@@ -55,9 +63,21 @@ function AddTax() {
         error={errors.rateBp}
         onChange={(e) => setF({ ...f, rate: e.target.value })}
       />
+      {tax && (
+        <Checkbox
+          label="In use"
+          checked={f.isActive}
+          onChange={(e) => setF({ ...f, isActive: e.target.checked })}
+        />
+      )}
       <Button type="submit" pending={pending}>
-        Add tax
+        {tax ? 'Save tax' : 'Add tax'}
       </Button>
+      {tax && (
+        <button type="button" className="btn btn--quiet" onClick={onDone}>
+          Cancel
+        </button>
+      )}
     </form>
   );
 }
@@ -107,17 +127,48 @@ function AddTerm() {
   );
 }
 
-function AddAttribute() {
+/**
+ * Adds an attribute, or edits one: rename it, rename values, change what a
+ * value adds to the price, add values. Existing subscriptions keep the price
+ * they were sold at; new sales use the new extra.
+ */
+function AttributeForm({
+  attribute,
+  onDone,
+}: {
+  attribute?: Attribute | null;
+  onDone: () => void;
+}) {
   const qc = useQueryClient();
-  const [f, setF] = useState({ name: '', values: [{ name: '', extra: '' }] });
+  const blank = {
+    name: '',
+    values: [{ id: undefined as number | undefined, name: '', extra: '' }],
+  };
+  const [f, setF] = useState(
+    attribute
+      ? {
+          name: attribute.name,
+          values: attribute.values.map((v) => ({
+            id: v.id as number | undefined,
+            name: v.name,
+            extra: v.extraPrice ? String(v.extraPrice / 100) : '',
+          })),
+        }
+      : blank,
+  );
   const { errors, pending, submit, formRef } = useFormSubmit(
     attributeSchema,
-    (d) => api.post<Attribute[]>('/catalog/attributes', d),
+    (d) =>
+      attribute
+        ? api.put<Attribute[]>(`/catalog/attributes/${attribute.id}`, d)
+        : api.post<Attribute[]>('/catalog/attributes', d),
     {
-      success: 'Attribute added',
+      success: attribute ? 'Attribute updated' : 'Attribute added',
       onDone: () => {
-        setF({ name: '', values: [{ name: '', extra: '' }] });
+        setF(blank);
         void qc.invalidateQueries({ queryKey: ['attributes'] });
+        void qc.invalidateQueries({ queryKey: ['lookups'] });
+        onDone();
       },
     },
   );
@@ -131,6 +182,7 @@ function AddAttribute() {
         void submit({
           name: f.name,
           values: f.values.map((v) => ({
+            ...(v.id ? { id: v.id } : {}),
             name: v.name,
             extraPrice: v.extra ? rupeesToPaise(v.extra) : 0,
           })),
@@ -171,12 +223,21 @@ function AddAttribute() {
         </div>
       ))}
       <div className="form-actions form-actions--start">
-        <Button onClick={() => setF({ ...f, values: [...f.values, { name: '', extra: '' }] })}>
+        <Button
+          onClick={() =>
+            setF({ ...f, values: [...f.values, { id: undefined, name: '', extra: '' }] })
+          }
+        >
           Another value
         </Button>
         <Button type="submit" pending={pending}>
           Save attribute
         </Button>
+        {attribute && (
+          <button type="button" className="btn btn--quiet" onClick={onDone}>
+            Cancel
+          </button>
+        )}
       </div>
     </form>
   );
@@ -185,6 +246,8 @@ function AddAttribute() {
 /** Small reference tables the admin sets once: taxes, payment terms, variant attributes. */
 export function SettingsPage() {
   const admin = useUser().role === 'admin';
+  const [editingTax, setEditingTax] = useState<Tax | null>(null);
+  const [editingAttribute, setEditingAttribute] = useState<Attribute | null>(null);
   const taxes = useQuery({ queryKey: ['taxes'], queryFn: () => api.get<Tax[]>('/catalog/taxes') });
   const terms = useQuery({
     queryKey: ['terms'],
@@ -212,10 +275,34 @@ export function SettingsPage() {
                 align: 'end',
                 cell: (t) => <span className="fig">{formatPercent(t.rateBp)}</span>,
               },
+              ...(admin
+                ? [
+                    {
+                      key: 'e',
+                      header: 'Edit',
+                      align: 'end' as const,
+                      cell: (t: Tax) => (
+                        <button
+                          type="button"
+                          className="btn btn--quiet"
+                          onClick={() => setEditingTax(t)}
+                        >
+                          Edit
+                        </button>
+                      ),
+                    },
+                  ]
+                : []),
             ]}
             empty={<EmptyState title="No taxes yet" />}
           />
-          {admin && <AddTax />}
+          {admin && (
+            <TaxForm
+              key={editingTax?.id ?? 'new'}
+              tax={editingTax}
+              onDone={() => setEditingTax(null)}
+            />
+          )}
         </Panel>
         <Panel title="Payment terms">
           <DataTable
@@ -252,10 +339,34 @@ export function SettingsPage() {
                     )
                     .join(', '),
               },
+              ...(admin
+                ? [
+                    {
+                      key: 'e',
+                      header: 'Edit',
+                      align: 'end' as const,
+                      cell: (a: Attribute) => (
+                        <button
+                          type="button"
+                          className="btn btn--quiet"
+                          onClick={() => setEditingAttribute(a)}
+                        >
+                          Edit
+                        </button>
+                      ),
+                    },
+                  ]
+                : []),
             ]}
             empty={<EmptyState title="No attributes yet" />}
           />
-          {admin && <AddAttribute />}
+          {admin && (
+            <AttributeForm
+              key={editingAttribute?.id ?? 'new'}
+              attribute={editingAttribute}
+              onDone={() => setEditingAttribute(null)}
+            />
+          )}
         </Panel>
       </div>
     </>

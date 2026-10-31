@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { templateSchema } from '@brightloop/shared';
 import { Button, ButtonLink } from '../../components/Button';
 import { SelectField, TextArea, TextField } from '../../components/Field';
 import { PageHeader, Panel } from '../../components/Page';
 import { ErrorState, SkeletonBlock } from '../../components/States';
 import { DataTable, EmptyState, type Column } from '../../components/Table';
-import { api } from '../../lib/api';
+import { ApiError, api } from '../../lib/api';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 import { toInt, useFormSubmit } from '../../lib/forms';
 import { useLookups } from '../../lib/queries';
 import type { Template } from '../../lib/types';
@@ -82,6 +84,19 @@ export function TemplateFormPage() {
   const id = useParams().id;
   const editing = id ? Number(id) : null;
   const navigate = useNavigate();
+  const toast = useToast();
+  const [deleting, setDeleting] = useState(false);
+  const remove = useMutation({
+    mutationFn: () => api.delete(`/templates/${editing}`),
+    onSuccess: () => {
+      toast.show('Template deleted');
+      void qc.invalidateQueries({ queryKey: ['templates'] });
+      void qc.invalidateQueries({ queryKey: ['lookups'] });
+      navigate('/templates');
+    },
+    onError: (err) =>
+      toast.show(err instanceof ApiError ? err.message : 'Could not delete', 'error'),
+  });
   const qc = useQueryClient();
   const lookups = useLookups();
   const existing = useQuery({
@@ -143,7 +158,26 @@ export function TemplateFormPage() {
           { label: editing ? existing.data!.name : 'New' },
         ]}
         title={editing ? existing.data!.name : 'New template'}
+        actions={
+          editing ? (
+            <Button variant="danger" onClick={() => setDeleting(true)}>
+              Delete template
+            </Button>
+          ) : undefined
+        }
       />
+      {editing && (
+        <ConfirmDialog
+          open={deleting}
+          title={`Delete ${existing.data!.name}?`}
+          confirmLabel="Delete template"
+          pending={remove.isPending}
+          onCancel={() => setDeleting(false)}
+          onConfirm={() => remove.mutate()}
+        >
+          <p>Quotations already made from it keep their plan and lines. Only the template goes.</p>
+        </ConfirmDialog>
+      )}
       <form
         ref={formRef}
         noValidate

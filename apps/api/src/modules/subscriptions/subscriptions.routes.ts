@@ -16,5 +16,6 @@ export const subscriptionsRoutes = Router()
   .get('/:id', c.get)
   .post('/', validate(subscriptionSchema), c.create)
   .put('/:id', validate(subscriptionSchema), c.update)
+  .delete('/:id', c.removeDraft)
   .post('/:id/actions', validate(subscriptionActionSchema), c.transition)
   .use('/:id/changes', changesRoutes);

@@ -36,6 +36,17 @@ export function SubscriptionActions({ sub, basePath }: { sub: Subscription; base
   const toast = useToast();
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
+  const [deletingDraft, setDeletingDraft] = useState(false);
+  const removeDraft = useMutation({
+    mutationFn: () => api.delete(`/subscriptions/${sub.id}`),
+    onSuccess: () => {
+      toast.show(`Draft ${sub.number} deleted`);
+      void qc.invalidateQueries({ queryKey: ['subscriptions'] });
+      navigate('/subscriptions');
+    },
+    onError: (err) =>
+      toast.show(err instanceof ApiError ? err.message : 'Could not delete', 'error'),
+  });
   const isPortal = basePath.startsWith('/portal');
   const actions = availableSubscriptionActions(sub.status, sub).filter(
     (a) => !isPortal || ['confirm', 'pause', 'resume', 'close', 'renew'].includes(a),
@@ -78,6 +89,11 @@ export function SubscriptionActions({ sub, basePath }: { sub: Subscription; base
 
   return (
     <>
+      {!isPortal && sub.status === 'draft' && sub.events.length <= 1 && (
+        <Button variant="danger" onClick={() => setDeletingDraft(true)}>
+          Delete draft
+        </Button>
+      )}
       {!isPortal && isSubscriptionEditable(sub.status) && (
         <ButtonLink to={`/subscriptions/${sub.id}/edit`}>Edit</ButtonLink>
       )}
@@ -107,6 +123,19 @@ export function SubscriptionActions({ sub, basePath }: { sub: Subscription; base
           {isPortal && forward === 'confirm' ? 'Accept quotation' : LABEL[forward]}
         </Button>
       )}
+      <ConfirmDialog
+        open={deletingDraft}
+        title={`Delete draft ${sub.number}?`}
+        confirmLabel="Delete draft"
+        pending={removeDraft.isPending}
+        onCancel={() => setDeletingDraft(false)}
+        onConfirm={() => removeDraft.mutate()}
+      >
+        <p>
+          The draft was never sent to the customer, so it is removed entirely. This cannot be
+          undone.
+        </p>
+      </ConfirmDialog>
       <ConfirmDialog
         open={confirming}
         title={`Close ${sub.number}?`}

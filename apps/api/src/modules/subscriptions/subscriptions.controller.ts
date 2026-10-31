@@ -20,4 +20,8 @@ export const subscriptionsController = {
     void res.json({
       data: await s.transition(idParam(req), req.body.action, req.body.note ?? null, actorOf(req)),
     }),
+  removeDraft: async (req: Request, res: Response) => {
+    await s.removeDraft(idParam(req), actorOf(req));
+    res.status(204).end();
+  },
 };

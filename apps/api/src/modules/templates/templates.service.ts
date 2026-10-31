@@ -1,5 +1,11 @@
 import type { TemplateInput } from '@brightloop/shared';
-import { isForeignKeyViolation, isUniqueViolation, pool, withTransaction } from '../../db/pool';
+import {
+  isForeignKeyViolation,
+  isUniqueViolation,
+  pool,
+  query,
+  withTransaction,
+} from '../../db/pool';
 import { ConflictError, NotFoundError, ValidationError } from '../../lib/errors';
 import { templatesRepository as repo, type Template } from './templates.repository';
 
@@ -30,5 +36,15 @@ export const templatesService = {
         throw new ValidationError({ _: 'The plan, payment term or a product no longer exists' });
       throw err;
     }
+  },
+
+  /** Subscriptions made from a template keep their lines; only the shortcut goes. */
+  async remove(id: number) {
+    const rows = await query<{ id: number }>(
+      pool,
+      'DELETE FROM quotation_templates WHERE id = $1 RETURNING id',
+      [id],
+    );
+    if (!rows.length) throw new NotFoundError('Quotation template');
   },
 };

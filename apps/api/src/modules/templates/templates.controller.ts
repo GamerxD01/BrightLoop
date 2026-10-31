@@ -9,4 +9,8 @@ export const templatesController = {
     void res.status(201).json({ data: await s.save(req.body) }),
   update: async (req: Request, res: Response) =>
     void res.json({ data: await s.save(req.body, idParam(req)) }),
+  remove: async (req: Request, res: Response) => {
+    await s.remove(idParam(req));
+    res.status(204).end();
+  },
 };

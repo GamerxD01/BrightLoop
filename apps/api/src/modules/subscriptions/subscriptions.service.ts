@@ -12,7 +12,7 @@ import {
   type SubscriptionInput,
   type SubscriptionListQuery,
 } from '@brightloop/shared';
-import { pool, withTransaction, type Db } from '../../db/pool';
+import { pool, query, queryOne, withTransaction, type Db } from '../../db/pool';
 import { audit } from '../../lib/audit';
 import { NotFoundError, RuleError, ValidationError } from '../../lib/errors';
 import { events } from '../../lib/events';
@@ -396,6 +396,38 @@ export const subscriptionsService = {
     });
     publishChange(newId, old.customerId, 'quotation');
     return this.get(newId);
+  },
+
+  /**
+   * Deletes a draft that was never sent: nothing was promised to the customer
+   * and nothing was billed. Anything further along is closed instead, so its
+   * history stays.
+   */
+  async removeDraft(id: number, actor: Actor) {
+    const customerId = await withTransaction(async (tx) => {
+      const sub = await repo.lockHeader(tx, id);
+      if (!sub) throw new NotFoundError('Subscription');
+      if (sub.status !== 'draft')
+        throw new RuleError('Only a draft can be deleted; close it instead');
+      const sent = await queryOne(
+        tx,
+        `SELECT 1 FROM subscription_events WHERE subscription_id = $1 AND to_status <> 'draft'
+         UNION ALL SELECT 1 FROM invoices WHERE subscription_id = $1 LIMIT 1`,
+        [id],
+      );
+      if (sent) throw new RuleError('This draft has been sent or billed before; close it instead');
+      await query(tx, 'DELETE FROM subscriptions WHERE id = $1', [id]);
+      await audit(tx, {
+        actorId: actor.userId,
+        action: 'delete_draft',
+        entity: 'subscription',
+        entityId: id,
+        data: { number: sub.number },
+        requestId: actor.requestId,
+      });
+      return sub.customerId;
+    });
+    publishChange(id, customerId, 'deleted');
   },
 
   /** Next period window for a subscription, used by billing and the detail page. */

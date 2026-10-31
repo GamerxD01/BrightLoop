@@ -25,26 +25,27 @@ export function auditWrites(entity: string) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const verb = VERB[req.method];
     if (!verb || !req.user) return next();
+    // Remember the id a create returns; write the entry once the response has gone out.
+    let createdId: number | null = null;
     const json = res.json.bind(res);
     res.json = (body: unknown) => {
-      if (res.statusCode < 400) {
-        const data = (body as { data?: { id?: number } } | undefined)?.data;
-        const segment = req.path.split('/').filter(Boolean)[0];
-        const kind = (segment && SEGMENT[segment]) || entity;
-        const entityId =
-          typeof data?.id === 'number'
-            ? data.id
-            : Number(req.params.id ?? req.path.match(/\/(\d+)/)?.[1]) || null;
-        void audit(pool, {
-          actorId: req.user!.id,
-          action: `${verb}_${kind}`,
-          entity: kind,
-          entityId,
-          requestId: req.id,
-        }).catch(() => undefined);
-      }
+      const data = (body as { data?: { id?: number } } | undefined)?.data;
+      if (typeof data?.id === 'number') createdId = data.id;
       return json(body);
     };
+    res.on('finish', () => {
+      if (res.statusCode >= 400) return;
+      const segment = req.path.split('/').filter(Boolean)[0];
+      const kind = (segment && SEGMENT[segment]) || entity;
+      const entityId = createdId ?? (Number(req.path.match(/\/(\d+)/)?.[1]) || null);
+      void audit(pool, {
+        actorId: req.user!.id,
+        action: `${verb}_${kind}`,
+        entity: kind,
+        entityId,
+        requestId: req.id,
+      }).catch(() => undefined);
+    });
     next();
   };
 }
