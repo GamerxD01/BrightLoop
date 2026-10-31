@@ -48,11 +48,11 @@ ALTER TABLE invoices
   ADD COLUMN amount_igst      BIGINT   NOT NULL DEFAULT 0 CHECK (amount_igst >= 0),
   -- Seller details as they were on the day of issue; a later profile edit never rewrites an issued invoice.
   ADD COLUMN seller           JSONB;
--- Split always adds back up to the tax total.
-ALTER TABLE invoices ADD CONSTRAINT invoices_gst_adds_up CHECK (amount_cgst + amount_sgst + amount_igst = amount_tax);
 
 -- Existing rows predate the split: put their whole tax under CGST/SGST.
 UPDATE invoices SET amount_cgst = amount_tax / 2, amount_sgst = amount_tax - amount_tax / 2;
+-- Only then the rule: the split always adds back up to the tax total.
+ALTER TABLE invoices ADD CONSTRAINT invoices_gst_adds_up CHECK (amount_cgst + amount_sgst + amount_igst = amount_tax);
 
 ALTER TABLE invoice_lines
   ADD COLUMN hsn_sac TEXT,
