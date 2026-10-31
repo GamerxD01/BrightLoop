@@ -33,11 +33,9 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   }
 
   if ((err as { type?: string })?.type === 'entity.parse.failed') {
-    res
-      .status(400)
-      .json({
-        error: { code: 'BAD_JSON', message: 'Request body is not valid JSON', requestId: req.id },
-      });
+    res.status(400).json({
+      error: { code: 'BAD_JSON', message: 'Request body is not valid JSON', requestId: req.id },
+    });
     return;
   }
 

@@ -182,7 +182,7 @@ export const invoicesService = {
       await sendMail({
         to: inv.customerEmail,
         subject: `Invoice ${inv.number} from Brightloop — ${formatMoney(inv.amountDue)} due ${inv.dueDate}`,
-        text: `Hello ${inv.customerName},\n\nInvoice ${inv.number} (${LABELS.invoiceStatus[inv.status]}) for ${inv.periodStart} to ${inv.periodEnd}:\n\n${lines}\n\nTotal ${formatMoney(inv.amountTotal)} · Paid ${formatMoney(inv.amountPaid)} · Due ${formatMoney(inv.amountDue)} by ${inv.dueDate}\n\nView it any time: ${env.APP_URL}/portal/invoices/${inv.id}\n`,
+        text: `Hello ${inv.customerName},\n\nInvoice ${inv.number} (${LABELS.invoiceStatus[inv.status]}) for ${inv.periodStart} to ${inv.periodEnd}:\n\n${lines}\n\nTotal: ${formatMoney(inv.amountTotal)}\nPaid: ${formatMoney(inv.amountPaid)}\nDue by ${inv.dueDate}: ${formatMoney(inv.amountDue)}\n\nView it any time: ${env.APP_URL}/portal/invoices/${inv.id}\n`,
       });
     } catch (err) {
       logger.error({ err, invoiceId: id }, 'Invoice email failed');

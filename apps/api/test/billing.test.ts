@@ -151,14 +151,12 @@ describe('payments', () => {
       .post('/api/payments')
       .send({ invoiceId: inv.id, amount: inv.amountTotal, method: 'upi', paidOn: todayIso() });
     expect(over.status).toBe(422);
-    const rest = await admin
-      .post('/api/payments')
-      .send({
-        invoiceId: inv.id,
-        amount: inv.amountTotal - half,
-        method: 'cash',
-        paidOn: todayIso(),
-      });
+    const rest = await admin.post('/api/payments').send({
+      invoiceId: inv.id,
+      amount: inv.amountTotal - half,
+      method: 'cash',
+      paidOn: todayIso(),
+    });
     expect(rest.body.data.status).toBe('paid');
   });
 

@@ -40,19 +40,26 @@ export const reportsRepository = {
       [from, to, planId],
     ),
 
+  /** One grouped scan per table over the date range (index on invoice_date / paid_on), joined to the month series. */
   monthly: (db: Db, from: string, to: string, planId: number | null) =>
     query<{ month: string; invoiced: number; collected: number }>(
       db,
       `WITH months AS (
-         SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS month)
-       SELECT to_char(m.month, 'YYYY-MM') AS month,
-         COALESCE((SELECT sum(i.amount_total) FROM invoices i LEFT JOIN subscriptions s ON s.id = i.subscription_id
-                   WHERE i.status IN ('confirmed', 'paid') AND date_trunc('month', i.invoice_date) = m.month
-                     AND ($3::bigint IS NULL OR s.plan_id = $3)), 0) AS invoiced,
-         COALESCE((SELECT sum(pm.amount) FROM payments pm JOIN invoices i ON i.id = pm.invoice_id
-                   LEFT JOIN subscriptions s ON s.id = i.subscription_id
-                   WHERE date_trunc('month', pm.paid_on) = m.month AND ($3::bigint IS NULL OR s.plan_id = $3)), 0) AS collected
-       FROM months m ORDER BY m.month`,
+         SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS month),
+       inv AS (
+         SELECT date_trunc('month', i.invoice_date)::date AS month, sum(i.amount_total) AS total
+         FROM invoices i LEFT JOIN subscriptions s ON s.id = i.subscription_id
+         WHERE i.status IN ('confirmed', 'paid') AND i.invoice_date >= date_trunc('month', $1::date) AND i.invoice_date <= $2
+           AND ($3::bigint IS NULL OR s.plan_id = $3)
+         GROUP BY 1),
+       pay AS (
+         SELECT date_trunc('month', pm.paid_on)::date AS month, sum(pm.amount) AS total
+         FROM payments pm JOIN invoices i ON i.id = pm.invoice_id LEFT JOIN subscriptions s ON s.id = i.subscription_id
+         WHERE pm.paid_on >= date_trunc('month', $1::date) AND pm.paid_on <= $2 AND ($3::bigint IS NULL OR s.plan_id = $3)
+         GROUP BY 1)
+       SELECT to_char(m.month, 'YYYY-MM') AS month, COALESCE(inv.total, 0) AS invoiced, COALESCE(pay.total, 0) AS collected
+       FROM months m LEFT JOIN inv ON inv.month = m.month LEFT JOIN pay ON pay.month = m.month
+       ORDER BY m.month`,
       [from, to, planId],
     ),
 

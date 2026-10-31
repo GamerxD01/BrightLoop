@@ -54,7 +54,7 @@ async function buildLines(db: Db, input: SubscriptionInput, plan: Plan): Promise
       kind: 'plan',
       productId: null,
       variantId: null,
-      description: `${plan.name} · ${LABELS.billingPeriod[plan.billingPeriod]}`,
+      description: `${plan.name}, billed ${LABELS.billingPeriod[plan.billingPeriod].toLowerCase()}`,
       quantity: input.planQuantity,
       unitPrice: plan.price,
       taxId: plan.taxId,
